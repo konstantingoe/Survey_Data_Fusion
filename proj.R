@@ -1,11 +1,31 @@
 ######## Survey Data Fusion ############
+rm(list = ls())
 
 knitr::opts_chunk$set(echo = TRUE, cache = T)
 source("packages.R")
-source("library.R")
 
+#setwd(path) in path.R
+source(".path.R")
 
 ####### Initiation ##########
+
+#### Import SOEP #####
+
+soep <- import(paste(path, "soep_2012_m_genau.dta" , sep = "/"), setclass = "data.table")
+str(soep)
+
+for (var in colnames(soep)) {
+  attr(soep[[deparse(as.name(var))]], "ATT_1") <- NULL
+  attr(soep[[deparse(as.name(var))]], "ATT_2") <- NULL
+}
+
+
+
+#### Import VSKT ######
+
+vskt <- import(paste(path, "vskt_m_active.dta" , sep = "/"), setclass = "data.table")
+str(vskt)
+
 
 group.v <- c("area5","sex")
 X.mtc <- "age"
