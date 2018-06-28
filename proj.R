@@ -12,12 +12,12 @@ source(".path.R")
 #### Import SOEP #####
 
 soep <- import(paste(path, "soep_2012_m_genau.dta" , sep = "/"), setclass = "data.table")
-str(soep)
 
-for (var in colnames(soep)) {
-  attr(soep[[deparse(as.name(var))]], "ATT_1") <- NULL
-  attr(soep[[deparse(as.name(var))]], "ATT_2") <- NULL
-}
+as.data.frame(soep)
+
+stripAttributes(soep)
+
+str(soep)
 
 
 

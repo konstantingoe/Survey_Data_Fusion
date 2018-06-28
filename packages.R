@@ -31,6 +31,7 @@ pacman::p_load(
   stargazer,
   strucchange,
   rio,
+  merTools,
   StatMatch,
   Hmisc,
   MASS,
