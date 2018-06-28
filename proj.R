@@ -13,30 +13,70 @@ source(".path.R")
 
 soep <- import(paste(path, "soep_2012_m_genau.dta" , sep = "/"), setclass = "data.table")
 
-as.data.frame(soep)
+clear.labels <- function(x) {
+  if(is.list(x)) {
+    for(i in 1 : length(x)) class(x[[i]]) <- setdiff(class(x[[i]]), 'labelled') 
+    for(i in 1 : length(x)) attr(x[[i]],"label") <- NULL
+  }
+  else {
+    class(x) <- setdiff(class(x), "labelled")
+    attr(x, "label") <- NULL
+  }
+  return(x)
+}
 
-stripAttributes(soep)
 
-str(soep)
+soep <- clear.labels(soep)
 
-
+head(soep)
 
 #### Import VSKT ######
 
 vskt <- import(paste(path, "vskt_m_active.dta" , sep = "/"), setclass = "data.table")
-str(vskt)
+vskt <- clear.labels(vskt)
+
+head(vskt)
 
 
-group.v <- c("area5","sex")
-X.mtc <- "age"
+#### Define common variables ####
 
-rnd.2 <- RANDwNND.hotdeck(data.rec=samp.A, data.don=samp.B,
-                          match.vars=X.mtc, don.class=group.v,
-                          dist.fun="Manhattan",
-                          cut.don="exact", k=20)
+# Variables available in both datasets
+X.vars <- intersect(names(soep), names(vskt)); X.vars 
 
-fA.knnd <- create.fused(data.rec=samp.A, data.don=samp.B,
-                        mtc.ids=rnd.2$mtc.ids,
-                        z.vars="labour5")
+soep.vars <- setdiff(names(soep), names(vskt)) # available just in SOEP
 
-head(rnd.2$sum.dist)
+vskt.vars <- setdiff(names(vskt), names(soep)) # available just in VSKT
+
+X.mtc <- X.vars
+
+rnd.hd <- RANDwNND.hotdeck(data.rec=soep, data.don=vskt,
+                          match.vars=X.mtc, 
+                          dist.fun="Mahalanobis",
+                          cut.don="min", k=20)
+
+fA.knnd <- create.fused(data.rec=soep, data.don=vskt,
+                        mtc.ids=rnd.hd$mtc.ids,
+                        z.vars=vskt.vars)
+
+head(rnd.hd$sum.dist)
+
+
+#checking distances
+sum(rnd.hd$dist.rd) # 20 k nearest neighbors
+
+#estimating marginal distribution of spez_scheidung
+tt0 <- xtabs(~spez_scheidung, data=vskt) # reference distr.
+tt <- xtabs(~spez_scheidung, data=fA.knnd) # synt unconstr.
+#
+# checking marginal distributions
+cp1 <- comp.prop(p1=tt, p2=tt0, n1=nrow(fA.knnd), n2=NULL, ref=TRUE)
+
+cp1$meas #marginal distribution after fusion of spez_scheidung
+
+
+densityplot(~brutto_zens_2005, vskt)
+densityplot(~brutto_zens_2005, fA.knnd)
+
+
+
+
