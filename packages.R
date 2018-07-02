@@ -31,10 +31,12 @@ pacman::p_load(
   stargazer,
   strucchange,
   rio,
-  merTools,
+  randomForest,
+  dplyr,
   StatMatch,
   Hmisc,
   MASS,
+  reshape2,
   # those beneath always load last
   ggplot2,
   tidyverse)
