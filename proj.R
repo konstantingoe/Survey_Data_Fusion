@@ -175,9 +175,12 @@ soep.vars <- setdiff(names(soep2), names(vskt)) # available just in SOEP
 
 vskt.vars <- setdiff(names(vskt), names(soep2)) # available just in VSKT
 
-(X.mtc <- c("rentenanspruch_2012", "exp_arbeit_20_bis2012", "exp_al_20_bis2012"))
+(X.mtc2 <- c("rentenanspruch_2012", "exp_arbeit_20_bis2012", "exp_al_20_bis2012"))
 
-nnd.hd <- NND.hotdeck(data.rec=soep2, data.don=vskt,
+(X.mtc <- c("rentenanspruch_2012", "exp_arbeit_20_bis2012"))
+
+
+nnd.hd <- NND.hotdeck(data.rec=soep, data.don=vskt,
                           match.vars=X.mtc, 
                           dist.fun = "minimax",
                           rank = TRUE,
@@ -185,28 +188,28 @@ nnd.hd <- NND.hotdeck(data.rec=soep2, data.don=vskt,
                           constr.alg = "lpSolve",
                           k=20)
 
-fA.knnd <- create.fused(data.rec=soep, data.don=vskt,
-                        mtc.ids=rnd.hd$mtc.ids,
+fA.nnd <- create.fused(data.rec=soep, data.don=vskt,
+                        mtc.ids=nnd.hd$mtc.ids,
                         z.vars=vskt.vars)
 
-head(rnd.hd$sum.dist)
+head(nnd.hd$sum.dist)
 
 
 #checking distances
-sum(rnd.hd$dist.rd) # 20 k nearest neighbors
+sum(nnd.hd$dist.rd) # 20 k nearest neighbors
 
-#estimating marginal distribution of spez_scheidung
-tt0 <- xtabs(~spez_scheidung, data=vskt) # reference distr.
-tt <- xtabs(~spez_scheidung, data=fA.knnd) # synt unconstr.
+#estimating marginal distribution of rentenanspruch_2012
+tt0 <- xtabs(~rentenanspruch_2012, data=vskt) # reference distr.
+tt <- xtabs(~rentenanspruch_2012, data=fA.nnd) # synt unconstr.
 #
 # checking marginal distributions
-cp1 <- comp.prop(p1=tt, p2=tt0, n1=nrow(fA.knnd), n2=NULL, ref=TRUE)
+cp1 <- comp.prop(p1=tt, p2=tt0, n1=nrow(fA.nnd), n2=NULL, ref=TRUE)
 
-cp1$meas #marginal distribution after fusion of spez_scheidung
+cp1$meas #marginal distribution after fusion of rentenanspruch_2012
 
 
-densityplot(~brutto_zens_2005, vskt)
-densityplot(~brutto_zens_2005, fA.knnd)
+densityplot(~rentenanspruch_2012, vskt)
+densityplot(~rentenanspruch_2012, fA.nnd)
 
 
 
