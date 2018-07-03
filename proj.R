@@ -67,59 +67,123 @@ spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_2
 
 X.vars <- intersect(names(soep), names(vskt)); X.vars 
 soep.small <- select(soep, one_of(X.vars))
+
+soep.small <- soep.small %>% 
+  mutate(soep=1)
+
 vskt.small <- select(vskt, one_of(X.vars))
+vskt.small <- vskt.small %>% 
+  mutate(soep=0)
 
 
-densityplot(~gbja,soep.small, xlab = "Birthyear in SOEP")
-densityplot(~gbja,vskt.small, xlab = "Birthyear in VSKT")
+soep.vskt = rbind(soep.small, vskt.small)
 
-densityplot(~rentenanspruch_2012,soep.small, xlab = "Pension entitlements in SOEP")
-densityplot(~rentenanspruch_2012,vskt.small, xlab = "Pension entitlements in VSKT")
+(birthyear <- ggplot(soep.vskt, aes(gbja, fill = soep)) +
+            geom_density(aes(group=soep, alpha = 0.1)))
 
-histogram(~exp_al_20_bis2012,soep.small, xlab = "Experience of unemployment in SOEP")
-histogram(~exp_al_20_bis2012,vskt.small, xlab = "Experience of unemployment in VSKT")
+(pension.ent <- ggplot(soep.vskt, aes(rentenanspruch_2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)))
 
-histogram(~exp_arbeit_20_bis2012,soep.small, xlab = "Working experience in SOEP")
-histogram(~exp_arbeit_20_bis2012,vskt.small, xlab = "Working experience in VSKT")
+(income <- ggplot(soep.vskt, aes(brutto_zens_2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)))
 
-densityplot(~brutto_zens_2012,soep.small, xlab = "Labour income in SOEP")
-densityplot(~brutto_zens_2012,vskt.small, xlab = "Labour income in VSKT")
+(unemp.ben <- ggplot(soep.vskt, aes(alg_j_2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)) +
+    xlim(100, 40000))
 
-densityplot(~alg_j_2012,soep.small, xlab = "Unemployment benefits in SOEP")
-densityplot(~alg_j_2012,vskt.small, xlab = "Unemployment benefits in VSKT")
+(exp.al <- ggplot(soep.vskt, aes(exp_al_20_bis2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1))+
+  xlim(1, 100))
+
+(exp.arbeit <- ggplot(soep.vskt, aes(exp_arbeit_20_bis2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)))
+
 
 #### Clearly, setting bdp10301 to 1, meaning exact pension entitlements created a subset of 
 #### observations that is not compatible with the VSKT population!
 
+### Checking for full active population ####
 
-#### Choosing Variables with respect to their contribution to the reduction of uncertainty ####
+#### Import SOEP #####
 
+soep2 <- import(paste(path, "soep_2012_aktiv.dta" , sep = "/"), setclass = "data.table")
 
+soep2 <- clear.labels(soep2)
 
+head(soep2)
 
-
-
-
-
-
-
-
+### density/histogram plots for X.vars --> marginal/joint density should now be the same!
 
 
+X2.vars <- intersect(names(soep2), names(vskt)) 
+soep2.small <- select(soep2, one_of(X2.vars))
+
+soep2.small <- soep2.small %>% 
+  mutate(soep=1)
+
+soep2.vskt = rbind(soep2.small, vskt.small)
+
+(birthyear <- ggplot(soep2.vskt, aes(gbja, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)))
+
+(pension.ent <- ggplot(soep2.vskt, aes(rentenanspruch_2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)))
+
+(income <- ggplot(soep2.vskt, aes(brutto_zens_2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)))
+
+(unemp.ben <- ggplot(soep2.vskt, aes(alg_j_2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)) +
+    xlim(100, 40000))
+
+(exp.al <- ggplot(soep2.vskt, aes(exp_al_20_bis2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1))+
+    xlim(1, 100))
+
+(exp.arbeit <- ggplot(soep2.vskt, aes(exp_arbeit_20_bis2012, fill = soep)) +
+    geom_density(aes(group=soep, alpha = 0.1)))
+
+### that looks definitely more promising
+
+
+### Now check again for imprtant variables:
+
+spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_20_bis2012+exp_al_20_bis2012+alg_j_2012,
+          p=2, data=soep2)
+
+### now rentenanspruch_2012 and exp_al_20_bis2012 age_g relatively and exp.arb also show significant importance for full active population in SOEP
+
+## doing the same for VSKT
+
+spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_20_bis2012+exp_al_20_bis2012+alg_j_2012,
+          p=2, data=vskt)
+
+### rentenanspruch is again has high impact as well as exp_arbeit_20_bis2012, exp_al_20_bis2012 not so much
 
 
 
+# ------------------------------------------------------------------------------------------------#
+# ------------------------------------------------------------------------------------------------#
+################################### Data Fusion ###################################################
+# ------------------------------------------------------------------------------------------------#
+# ------------------------------------------------------------------------------------------------#
 
-soep.vars <- setdiff(names(soep), names(vskt)) # available just in SOEP
+## Perform nearest neighbor distance hot deck with maximum norm as distance measure with 
+## rank option = TRUE such that scale differences are accounted for 
 
-vskt.vars <- setdiff(names(vskt), names(soep)) # available just in VSKT
+soep.vars <- setdiff(names(soep2), names(vskt)) # available just in SOEP
 
-X.mtc <- X.vars
+vskt.vars <- setdiff(names(vskt), names(soep2)) # available just in VSKT
 
-rnd.hd <- RANDwNND.hotdeck(data.rec=soep, data.don=vskt,
+(X.mtc <- c("rentenanspruch_2012", "exp_arbeit_20_bis2012", "exp_al_20_bis2012"))
+
+nnd.hd <- NND.hotdeck(data.rec=soep2, data.don=vskt,
                           match.vars=X.mtc, 
-                          dist.fun="Mahalanobis",
-                          cut.don="min", k=20)
+                          dist.fun = "minimax",
+                          rank = TRUE,
+                          constrained = TRUE,
+                          constr.alg = "lpSolve",
+                          k=20)
 
 fA.knnd <- create.fused(data.rec=soep, data.don=vskt,
                         mtc.ids=rnd.hd$mtc.ids,

@@ -34,6 +34,7 @@ pacman::p_load(
   randomForest,
   dplyr,
   StatMatch,
+  lpSolve,
   Hmisc,
   MASS,
   reshape2,
