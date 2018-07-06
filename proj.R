@@ -99,6 +99,14 @@ soep.vskt = rbind(soep.small, vskt.small)
     geom_density(aes(group=soep, alpha = 0.1)))
 
 
+kdens <- ggplot() + geom_density(data=soep.men.full, aes(x=rentenanspruch_2012), colour = "black", fill = "turquoise4", alpha = 0.4) +
+                   geom_density(data=vskt, aes(x=rentenanspruch_2012), colour = "black", fill = "gold", alpha = 0.4)
+kdens
+
+### use this as basis for further analysis
+
+
+
 #### Clearly, setting bdp10301 to 1, meaning exact pension entitlements created a subset of 
 #### observations that is not compatible with the VSKT population!
 
@@ -106,41 +114,41 @@ soep.vskt = rbind(soep.small, vskt.small)
 
 #### Import SOEP #####
 
-soep2 <- import(paste(path, "soep_2012_aktiv.dta" , sep = "/"), setclass = "data.table")
+soep.men.full <- import(paste(path, "soep_2012_aktiv.dta" , sep = "/"), setclass = "data.table")
 
-soep2 <- clear.labels(soep2)
+soep.men.full <- clear.labels(soep.men.full)
 
-head(soep2)
+head(soep.men.full)
 
 ### density/histogram plots for X.vars --> marginal/joint density should now be the same!
 
 
-X2.vars <- intersect(names(soep2), names(vskt)) 
-soep2.small <- select(soep2, one_of(X2.vars))
+X2.vars <- intersect(names(soep.men.full), names(vskt)) 
+soep.men.full.small <- select(soep.men.full, one_of(X2.vars))
 
-soep2.small <- soep2.small %>% 
+soep.men.full.small <- soep.men.full.small %>% 
   mutate(soep=1)
 
-soep2.vskt = rbind(soep2.small, vskt.small)
+soep.men.full.vskt = rbind(soep.men.full.small, vskt.small)
 
-(birthyear <- ggplot(soep2.vskt, aes(gbja, fill = soep)) +
+(birthyear <- ggplot(soep.men.full.vskt, aes(gbja, fill = soep)) +
     geom_density(aes(group=soep, alpha = 0.1)))
 
-(pension.ent <- ggplot(soep2.vskt, aes(rentenanspruch_2012, fill = soep)) +
+(pension.ent <- ggplot(soep.men.full.vskt, aes(rentenanspruch_2012, fill = soep)) +
     geom_density(aes(group=soep, alpha = 0.1)))
 
-(income <- ggplot(soep2.vskt, aes(brutto_zens_2012, fill = soep)) +
+(income <- ggplot(soep.men.full.vskt, aes(brutto_zens_2012, fill = soep)) +
     geom_density(aes(group=soep, alpha = 0.1)))
 
-(unemp.ben <- ggplot(soep2.vskt, aes(alg_j_2012, fill = soep)) +
+(unemp.ben <- ggplot(soep.men.full.vskt, aes(alg_j_2012, fill = soep)) +
     geom_density(aes(group=soep, alpha = 0.1)) +
     xlim(100, 40000))
 
-(exp.al <- ggplot(soep2.vskt, aes(exp_al_20_bis2012, fill = soep)) +
+(exp.al <- ggplot(soep.men.full.vskt, aes(exp_al_20_bis2012, fill = soep)) +
     geom_density(aes(group=soep, alpha = 0.1))+
     xlim(1, 100))
 
-(exp.arbeit <- ggplot(soep2.vskt, aes(exp_arbeit_20_bis2012, fill = soep)) +
+(exp.arbeit <- ggplot(soep.men.full.vskt, aes(exp_arbeit_20_bis2012, fill = soep)) +
     geom_density(aes(group=soep, alpha = 0.1)))
 
 ### that looks definitely more promising
@@ -149,7 +157,7 @@ soep2.vskt = rbind(soep2.small, vskt.small)
 ### Now check again for imprtant variables:
 
 spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_20_bis2012+exp_al_20_bis2012+alg_j_2012,
-          p=2, data=soep2)
+          p=2, data=soep.men.full)
 
 ### now rentenanspruch_2012 and exp_al_20_bis2012 age_g relatively and exp.arb also show significant importance for full active population in SOEP
 
@@ -171,45 +179,103 @@ spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_2
 ## Perform nearest neighbor distance hot deck with maximum norm as distance measure with 
 ## rank option = TRUE such that scale differences are accounted for 
 
-soep.vars <- setdiff(names(soep2), names(vskt)) # available just in SOEP
+soep.vars <- setdiff(names(soep.men.full), names(vskt)) # available just in SOEP
 
-vskt.vars <- setdiff(names(vskt), names(soep2)) # available just in VSKT
+vskt.vars <- setdiff(names(vskt), names(soep.men.full)) # available just in VSKT
 
 (X.mtc2 <- c("rentenanspruch_2012", "exp_arbeit_20_bis2012", "exp_al_20_bis2012"))
 
 (X.mtc <- c("rentenanspruch_2012", "exp_arbeit_20_bis2012"))
 
 
-nnd.hd <- NND.hotdeck(data.rec=soep, data.don=vskt,
+### donation class define as factor first:
+
+soep.men.full <- 
+  soep.men.full %>% 
+  mutate(age_g = factor(age_g, ordered = TRUE)) 
+
+str(soep.men.full$age_g)
+
+
+vskt <- 
+  vskt %>% 
+  mutate(age_g = factor(age_g, ordered = TRUE)) 
+str(vskt$age_g)
+
+
+### nearest neighbor distance matching using the L^{inf} norm and lpSolv constrained matching algorythm
+ 
+
+nnd.hd <- NND.hotdeck(data.rec=soep.men.full, data.don=vskt,
                           match.vars=X.mtc, 
+                          don.class = "age_g",
                           dist.fun = "minimax",
                           rank = TRUE,
                           constrained = TRUE,
                           constr.alg = "lpSolve",
-                          k=20)
+                          k=5)
 
-fA.nnd <- create.fused(data.rec=soep, data.don=vskt,
+#nnd.hd2 <- NND.hotdeck(data.rec=soep.men.full, data.don=vskt,
+ #                     match.vars=X.mtc, 
+  #                    don.class = "age_g",
+   #                   dist.fun = "mahalanobis",
+    #                  constrained = TRUE,
+     #                 constr.alg = "lpSolve",
+      #                k=5)
+                      
+
+#### compare distances via boxplot --> geom_boxplot in ggplot
+
+fA.nnd <- create.fused(data.rec=soep.men.full, data.don=vskt,
                         mtc.ids=nnd.hd$mtc.ids,
                         z.vars=vskt.vars)
 
-head(nnd.hd$sum.dist)
+
+summary(nnd.hd$dist.rd)
 
 
-#checking distances
-sum(nnd.hd$dist.rd) # 20 k nearest neighbors
-
-#estimating marginal distribution of rentenanspruch_2012
-tt0 <- xtabs(~rentenanspruch_2012, data=vskt) # reference distr.
-tt <- xtabs(~rentenanspruch_2012, data=fA.nnd) # synt unconstr.
-#
-# checking marginal distributions
-cp1 <- comp.prop(p1=tt, p2=tt0, n1=nrow(fA.nnd), n2=NULL, ref=TRUE)
-
-cp1$meas #marginal distribution after fusion of rentenanspruch_2012
+##########################################################
+##########################################################
+##########################################################
+### diagnostics####
 
 
-densityplot(~rentenanspruch_2012, vskt)
-densityplot(~rentenanspruch_2012, fA.nnd)
+
+
+# Calculate the common x and y range for geyser1 and geyser2
+xrng = range(c(geyser1$duration, geyser2$duration))
+yrng = range(c(geyser1$waiting, geyser2$waiting))
+
+# Calculate the 2d density estimate over the common range
+d1 = kde2d(geyser1$duration, geyser1$waiting, lims=c(xrng, yrng), n=200)
+d2 = kde2d(geyser2$duration, geyser2$waiting, lims=c(xrng, yrng), n=200)
+
+# Confirm that the grid points for each density estimate are identical
+identical(d1$x, d2$x) # TRUE
+identical(d1$y, d2$y) # TRUE
+
+# Calculate the difference between the 2d density estimates
+diff12 = d1 
+diff12$z = d2$z - d1$z
+
+## Melt data into long format
+# First, add row and column names (x and y grid values) to the z-value matrix
+rownames(diff12$z) = diff12$x
+colnames(diff12$z) = diff12$y
+
+# Now melt it to long format
+diff12.m = melt(diff12$z, id.var=rownames(diff12))
+names(diff12.m) = c("Duration","Waiting","z")
+
+# Plot difference between geyser2 and geyser1 density
+ggplot(diff12.m, aes(Duration, Waiting, z=z, fill=z)) +
+  geom_tile() +
+  stat_contour(aes(colour=..level..), binwidth=0.001) +
+  scale_fill_gradient2(low="red",mid="white", high="blue", midpoint=0) +
+  scale_colour_gradient2(low=muted("red"), mid="white", high=muted("blue"), midpoint=0) +
+  coord_cartesian(xlim=xrng, ylim=yrng) +
+  guides(colour=FALSE)
+
 
 
 
