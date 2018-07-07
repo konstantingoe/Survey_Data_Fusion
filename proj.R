@@ -23,11 +23,11 @@ clear.labels <- function(x) {
 
 #### Import SOEP #####
 
-soep <- import(paste(path, "soep_2012_m_genau.dta" , sep = "/"), setclass = "data.table")
+#soep <- import(paste(path, "soep_2012_m_genau.dta" , sep = "/"), setclass = "data.table")
 
-soep <- clear.labels(soep)
+#soep <- clear.labels(soep)
 
-head(soep)
+#head(soep)
 
 #### Import VSKT ######
 
@@ -36,74 +36,9 @@ vskt <- clear.labels(vskt)
 
 head(vskt)
 
-
-#### Define common variables ####
-
-## here a randomForest evaluation of the most important matching variables might be fruitful!
-
-
-##
-
-
-## First simple Adjusted R-Squarred evaluations of mathching variables
-
-spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_20_bis2012+exp_al_20_bis2012+alg_j_2012,
-          p=2, data=soep)
-
-### it seems only rentenanspruch_2012 and exp_al_20_bis2012 show significant importance for SOEP
-
-## doing the same for VSKT
-
-spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_20_bis2012+exp_al_20_bis2012+alg_j_2012,
-          p=2, data=vskt)
-
-### rentenanspruch is again has high impact as well as exp_arbeit_20_bis2012, exp_al_20_bis2012 not so much
+### bdp10301==1
 ### problem...we don't have the same population --> apparently there is selection regarding age for those who
 ### give reliable information on their pension entitlements
-
-### density/histogram plots for X.vars --> marginal/joint density should be the same!
-
-# Variables available in both datasets
-
-X.vars <- intersect(names(soep), names(vskt)); X.vars 
-soep.small <- select(soep, one_of(X.vars))
-
-soep.small <- soep.small %>% 
-  mutate(soep=1)
-
-vskt.small <- select(vskt, one_of(X.vars))
-vskt.small <- vskt.small %>% 
-  mutate(soep=0)
-
-
-soep.vskt = rbind(soep.small, vskt.small)
-
-(birthyear <- ggplot(soep.vskt, aes(gbja, fill = soep)) +
-            geom_density(aes(group=soep, alpha = 0.1)))
-
-(pension.ent <- ggplot(soep.vskt, aes(rentenanspruch_2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)))
-
-(income <- ggplot(soep.vskt, aes(brutto_zens_2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)))
-
-(unemp.ben <- ggplot(soep.vskt, aes(alg_j_2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)) +
-    xlim(100, 40000))
-
-(exp.al <- ggplot(soep.vskt, aes(exp_al_20_bis2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1))+
-  xlim(1, 100))
-
-(exp.arbeit <- ggplot(soep.vskt, aes(exp_arbeit_20_bis2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)))
-
-
-kdens <- ggplot() + geom_density(data=soep.men.full, aes(x=rentenanspruch_2012), colour = "black", fill = "turquoise4", alpha = 0.4) +
-                   geom_density(data=vskt, aes(x=rentenanspruch_2012), colour = "black", fill = "gold", alpha = 0.4)
-kdens
-
-### use this as basis for further analysis
 
 
 
@@ -112,7 +47,7 @@ kdens
 
 ### Checking for full active population ####
 
-#### Import SOEP #####
+#### Import SOEP - full active population #####
 
 soep.men.full <- import(paste(path, "soep_2012_aktiv.dta" , sep = "/"), setclass = "data.table")
 
@@ -120,42 +55,105 @@ soep.men.full <- clear.labels(soep.men.full)
 
 head(soep.men.full)
 
-### density/histogram plots for X.vars --> marginal/joint density should now be the same!
 
+### Now check for imprtant variables:
 
-X2.vars <- intersect(names(soep.men.full), names(vskt)) 
-soep.men.full.small <- select(soep.men.full, one_of(X2.vars))
+#### Define common variables ####
 
-soep.men.full.small <- soep.men.full.small %>% 
+### density/histogram plots for X.vars --> marginal/joint density should be the same!
+
+# Variables available in both datasets
+
+(X.vars <- intersect(names(soep.men.full), names(vskt)))
+
+soep.men.full <- soep.men.full %>% 
   mutate(soep=1)
 
-soep.men.full.vskt = rbind(soep.men.full.small, vskt.small)
+vskt <- vskt %>% 
+  mutate(soep=0)
 
-(birthyear <- ggplot(soep.men.full.vskt, aes(gbja, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)))
-
-(pension.ent <- ggplot(soep.men.full.vskt, aes(rentenanspruch_2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)))
-
-(income <- ggplot(soep.men.full.vskt, aes(brutto_zens_2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)))
-
-(unemp.ben <- ggplot(soep.men.full.vskt, aes(alg_j_2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)) +
-    xlim(100, 40000))
-
-(exp.al <- ggplot(soep.men.full.vskt, aes(exp_al_20_bis2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1))+
-    xlim(1, 100))
-
-(exp.arbeit <- ggplot(soep.men.full.vskt, aes(exp_arbeit_20_bis2012, fill = soep)) +
-    geom_density(aes(group=soep, alpha = 0.1)))
-
-### that looks definitely more promising
+joint <- bind_rows(soep.men.full, vskt)#
 
 
-### Now check again for imprtant variables:
+anwartschaften.plot <- joint %>% 
+    ggplot() + 
+    geom_density(aes(x=rentenanspruch_2012, fill = factor(soep)), alpha = 0.4) 
+anwartschaften.plot <- anwartschaften.plot + xlab("Rentenawartschaften in €") + ylab("Dichte")
+anwartschaften.plot <- anwartschaften.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in SOEP und VSKT") +theme_minimal() 
+anwartschaften.plot <- anwartschaften.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
 
+anwartschaften.plot
+    
+ggsave("anwartschaften.pdf")
+
+birthyear.plot <- joint %>% 
+  ggplot() + 
+  geom_density(aes(x=gbja, fill = factor(soep)), alpha = 0.4) 
+birthyear.plot <- birthyear.plot + xlab("Geburtsjahr") + ylab("Dichte")
+birthyear.plot <- birthyear.plot + ggtitle("Vergleich der Geburtsjahrgänge in SOEP und VSKT") +theme_minimal() 
+birthyear.plot <- birthyear.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
+
+birthyear.plot
+
+ggsave("birthyear.pdf")
+
+
+income.plot <- joint %>% 
+  ggplot() + 
+  geom_density(aes(x=brutto_zens_2012, fill = factor(soep)), alpha = 0.4) 
+income.plot <- income.plot + xlab("Arbeitseinkommen in €") + ylab("Dichte")
+income.plot <- income.plot + ggtitle("Vergleich der Einkommen in SOEP und VSKT") +theme_minimal() 
+income.plot <- income.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
+
+income.plot
+
+ggsave("income.pdf")
+
+
+worktime.plot <- joint %>% 
+  ggplot() + 
+  geom_density(aes(x=exp_arbeit_20_bis2012, fill = factor(soep)), alpha = 0.4) 
+worktime.plot <- worktime.plot + xlab("Arbeitserfahrung in Monaten") + ylab("Dichte")
+worktime.plot <- worktime.plot + ggtitle("Vergleich der Arbeitserfahrung in SOEP und VSKT") +theme_minimal() 
+worktime.plot <- worktime.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
+
+worktime.plot
+
+ggsave("wtime.pdf")
+
+unempben.plot <- joint %>% 
+  ggplot() + 
+  geom_density(aes(x=alg_j_2012, fill = factor(soep)), alpha = 0.4) 
+unempben.plot <- unempben.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte")
+unempben.plot <- unempben.plot + ggtitle("Vergleich Arbeitslosengeld in SOEP und VSKT") +theme_minimal() 
+unempben.plot <- unempben.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"), 
+                                                   values = c("gold","turquoise4"))
+unempben.plot <- unempben.plot + scale_x_continuous(limits = c(10, 18000))
+unempben.plot 
+
+ggsave("unempben.pdf") 
+  
+
+unempexp.plot <- joint %>% 
+  ggplot() + 
+  geom_density(aes(x=exp_al_20_bis2012, fill = factor(soep)), alpha = 0.4) 
+unempexp.plot <- unempexp.plot + xlab("Monate in Arbeitslosigkeit") + ylab("Dichte")
+unempexp.plot <- unempexp.plot + ggtitle("Vergleich der Arbeitslosigkeitsdauer in SOEP und VSKT") +theme_minimal() 
+unempexp.plot <- unempexp.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),
+                                                   values = c("gold","turquoise4"))
+unempexp.plot <- unempexp.plot + scale_x_continuous(limits = c(1, 200)) 
+
+unempexp.plot
+
+
+ggsave("unemptime.pdf")
+
+
+
+## here a randomForest evaluation of the most important matching variables might be fruitful!
+
+
+##
 spearman2(brutto_zens_2012~age_g+spez_scheidung+rentenanspruch_2012+exp_arbeit_20_bis2012+exp_al_20_bis2012+alg_j_2012,
           p=2, data=soep.men.full)
 
@@ -233,22 +231,62 @@ fA.nnd <- create.fused(data.rec=soep.men.full, data.don=vskt,
 
 summary(nnd.hd$dist.rd)
 
+save(fA.nnd, file = "fused.RDA")
 
 ##########################################################
 ##########################################################
 ##########################################################
 ### diagnostics####
+load("fused.RDA")
+### prefereably put densities of VSKT and fused data set into one grid in order to compare
+### of course it now makes sense to compare the non matching variables!
+
+# main focus! after fusion the distributional structure should have prevailed!
+
+fA.nnd <- fA.nnd %>% 
+  mutate(vskt=0)
+
+vskt <- vskt %>% 
+  mutate(vskt=1)
+
+joint2 <- bind_rows(fA.nnd, vskt)
 
 
+fused_inc89.plot <- joint2 %>% 
+  ggplot() + 
+  geom_density(aes(x=brutto_zens_1998, fill = factor(vskt)), alpha = 0.4) 
+fused_inc89.plot <- fused_inc89.plot + xlab("Rentenawartschaften in €") + ylab("Dichte")
+fused_inc89.plot <- fused_inc89.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in fused Data Set und VSKT") +theme_minimal() 
+fused_inc89.plot <- fused_inc89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
 
+fused_inc89.plot
 
-# Calculate the common x and y range for geyser1 and geyser2
-xrng = range(c(geyser1$duration, geyser2$duration))
-yrng = range(c(geyser1$waiting, geyser2$waiting))
+ggsave("fuincome89.pdf")
+
+fused_alg89.plot <- joint2 %>% 
+  ggplot() + 
+  geom_density(aes(x=alg_j_1989, fill = factor(vskt)), alpha = 0.4) 
+fused_alg89.plot <- fused_alg89.plot + xlab("Rentenawartschaften in €") + ylab("Dichte")
+fused_alg89.plot <- fused_alg89.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in fused Data Set und VSKT") +theme_minimal() 
+fused_alg89.plot <- fused_alg89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
+fused_alg89.plot <- fused_alg89.plot + scale_x_continuous(limits = c(10, 18000))
+fused_alg89.plot
+
+ggsave("fualg89.pdf")
+
+### An so on ask Timm which ones!
+
+### Put them in a grid!
+
+### Also beamer template for presentation DIW...
+
+# Calculate the common x and y range 
+(xrng = range(c(fA.nnd$brutto_zens_2011, vskt$brutto_zens_2011)))
+(yrng = range(c(fA.nnd$gbja, vskt$gbja)))
 
 # Calculate the 2d density estimate over the common range
-d1 = kde2d(geyser1$duration, geyser1$waiting, lims=c(xrng, yrng), n=200)
-d2 = kde2d(geyser2$duration, geyser2$waiting, lims=c(xrng, yrng), n=200)
+d1 = kde2d(fA.nnd$brutto_zens_2011, fA.nnd$gbja, lims=c(xrng, yrng), n=200)
+d2 = kde2d(vskt$brutto_zens_2011, vskt$gbja, lims=c(xrng, yrng), n=200)
 
 # Confirm that the grid points for each density estimate are identical
 identical(d1$x, d2$x) # TRUE
@@ -265,18 +303,18 @@ colnames(diff12$z) = diff12$y
 
 # Now melt it to long format
 diff12.m = melt(diff12$z, id.var=rownames(diff12))
-names(diff12.m) = c("Duration","Waiting","z")
+names(diff12.m) = c("Einkommen","Geburtsjahr","z")
 
-# Plot difference between geyser2 and geyser1 density
-ggplot(diff12.m, aes(Duration, Waiting, z=z, fill=z)) +
+# Plot difference between densities
+ggplot(diff12.m, aes(Einkommen, Geburtsjahr, z=z, fill=z)) +
   geom_tile() +
+  theme_classic() +
   stat_contour(aes(colour=..level..), binwidth=0.001) +
-  scale_fill_gradient2(low="red",mid="white", high="blue", midpoint=0) +
-  scale_colour_gradient2(low=muted("red"), mid="white", high=muted("blue"), midpoint=0) +
+  scale_fill_gradient2(low="red",mid="white", high="turquoise4", midpoint=0) +
+  scale_colour_gradient2(low="red", mid="white", high="turquoise4", midpoint=0) +
   coord_cartesian(xlim=xrng, ylim=yrng) +
-  guides(colour=FALSE)
+  guides(colour=FALSE) +
+  ggtitle("Contour-Differenzen zwischen Fused Data und VSKT")
 
-
-
-
+ggsave("difference.pdf")
 
