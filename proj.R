@@ -102,7 +102,7 @@ income.plot <- joint %>%
   ggplot() + 
   geom_density(aes(x=brutto_zens_2012, fill = factor(soep)), alpha = 0.4) 
 income.plot <- income.plot + xlab("Arbeitseinkommen in €") + ylab("Dichte")
-income.plot <- income.plot + ggtitle("Vergleich der Einkommen in SOEP und VSKT") +theme_minimal() 
+income.plot <- income.plot + ggtitle("Vergleich der 2012 Einkommen in SOEP und VSKT") +theme_minimal() 
 income.plot <- income.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
 
 income.plot
@@ -149,6 +149,12 @@ unempexp.plot
 ggsave("unemptime.pdf")
 
 
+p <- cowplot::plot_grid(birthyear.plot, anwartschaften.plot)
+ggsave("grid1.pdf", p)
+
+
+q <- cowplot::plot_grid(unempexp.plot, unempben.plot, worktime.plot, income.plot, ncol=2, nrow=2)
+ggsave("grid2.pdf", q)
 
 ## here a randomForest evaluation of the most important matching variables might be fruitful!
 
@@ -231,13 +237,21 @@ fA.nnd <- create.fused(data.rec=soep.men.full, data.don=vskt,
 
 summary(nnd.hd$dist.rd)
 
+### make boxplot with dist.rd
+pdf('boxplot.pdf')
+box <- boxplot(nnd.hd$dist.rd, xlab="Supremumsnorm") 
+title("Boxplot of distances between SOEP and VSKT cases")
+dev.off()
+
 save(fA.nnd, file = "fused.RDA")
+save(nnd.hd, file = "matched.RDA")
 
 ##########################################################
 ##########################################################
 ##########################################################
 ### diagnostics####
 load("fused.RDA")
+load("matched.RDA")
 ### prefereably put densities of VSKT and fused data set into one grid in order to compare
 ### of course it now makes sense to compare the non matching variables!
 
@@ -255,8 +269,8 @@ joint2 <- bind_rows(fA.nnd, vskt)
 fused_inc89.plot <- joint2 %>% 
   ggplot() + 
   geom_density(aes(x=brutto_zens_1998, fill = factor(vskt)), alpha = 0.4) 
-fused_inc89.plot <- fused_inc89.plot + xlab("Rentenawartschaften in €") + ylab("Dichte")
-fused_inc89.plot <- fused_inc89.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in fused Data Set und VSKT") +theme_minimal() 
+fused_inc89.plot <- fused_inc89.plot + xlab("Einkommen in €") + ylab("Dichte")
+fused_inc89.plot <- fused_inc89.plot + ggtitle("Vergleich der Einkommen in 1989 in fused Data Set und VSKT") +theme_minimal() 
 fused_inc89.plot <- fused_inc89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
 
 fused_inc89.plot
@@ -266,8 +280,8 @@ ggsave("fuincome89.pdf")
 fused_alg89.plot <- joint2 %>% 
   ggplot() + 
   geom_density(aes(x=alg_j_1989, fill = factor(vskt)), alpha = 0.4) 
-fused_alg89.plot <- fused_alg89.plot + xlab("Rentenawartschaften in €") + ylab("Dichte")
-fused_alg89.plot <- fused_alg89.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in fused Data Set und VSKT") +theme_minimal() 
+fused_alg89.plot <- fused_alg89.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte")
+fused_alg89.plot <- fused_alg89.plot + ggtitle("Vergleich des Arbeitslosengeldes in 1989 in fused Data Set und VSKT") +theme_minimal() 
 fused_alg89.plot <- fused_alg89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
 fused_alg89.plot <- fused_alg89.plot + scale_x_continuous(limits = c(10, 18000))
 fused_alg89.plot
