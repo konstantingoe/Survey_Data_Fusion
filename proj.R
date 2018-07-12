@@ -366,7 +366,6 @@ test <- vskt.p %>%
 
 x <- xtabs(~test$pension+test$em_rente)
 x
-kable(x,output = TRUE, caption = "Vergleich wer hat eine Rente und wer ist schon verrentet")
 
 
 # Variables available in both datasets
