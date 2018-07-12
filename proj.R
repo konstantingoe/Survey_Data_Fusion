@@ -21,7 +21,7 @@ clear.labels <- function(x) {
   return(x)
 }
 
-#### Import SOEP #####
+#### Import SOEP active #####
 
 #soep <- import(paste(path, "soep_2012_m_genau.dta" , sep = "/"), setclass = "data.table")
 
@@ -29,7 +29,7 @@ clear.labels <- function(x) {
 
 #head(soep)
 
-#### Import VSKT ######
+#### Import VSKT active  ######
 
 vskt <- import(paste(path, "vskt_m_active.dta" , sep = "/"), setclass = "data.table")
 vskt <- clear.labels(vskt)
@@ -49,7 +49,7 @@ head(vskt)
 
 #### Import SOEP - full active population #####
 
-soep.men.full <- import(paste(path, "soep_2012_aktiv.dta" , sep = "/"), setclass = "data.table")
+soep.men.full <- import(paste(path, "soep_2012_m_aktiv.dta" , sep = "/"), setclass = "data.table")
 
 soep.men.full <- clear.labels(soep.men.full)
 
@@ -72,7 +72,7 @@ soep.men.full <- soep.men.full %>%
 vskt <- vskt %>% 
   mutate(soep=0)
 
-joint <- bind_rows(soep.men.full, vskt)#
+joint <- bind_rows(soep.men.full, vskt)
 
 
 anwartschaften.plot <- joint %>% 
@@ -331,4 +331,55 @@ ggplot(diff12.m, aes(Einkommen, Geburtsjahr, z=z, fill=z)) +
   ggtitle("Contour-Differenzen zwischen Fused Data und VSKT")
 
 ggsave("difference.pdf")
+
+
+##### Matching passive male population ######
+
+## I would rather write a function that automates the Nearest Neighbor Random Hot Deck Matching
+## However: Aint't nobody got time for this 
+
+
+
+
+#### Import SOEP passive #####
+
+soep.p <- import(paste(path, "soep_2012_m_passiv.dta" , sep = "/"), setclass = "data.table")
+
+soep.p <- clear.labels(soep)
+
+head(soep.p)
+
+#### Import VSKT ######
+
+vskt.p <- import(paste(path, "vskt_m_passiv.dta" , sep = "/"), setclass = "data.table")
+vskt.p <- clear.labels(vskt)
+
+head(vskt.p)
+
+
+### Now same as above! Also write function for this!
+
+### something seems to go wrong on the psgr 
+
+test <- vskt.p %>% 
+  mutate(pension=factor(ifelse(rente_total_2012>0,TRUE,FALSE)))
+
+x <- xtabs(~test$pension+test$em_rente)
+x
+kable(x,output = TRUE, caption = "Vergleich wer hat eine Rente und wer ist schon verrentet")
+
+
+# Variables available in both datasets
+
+(xp.vars <- intersect(names(soep.p), names(vskt.p)))
+
+soep.p <- soep.p %>% 
+  mutate(soep=1)
+
+vskt.p <- vskt.p %>% 
+  mutate(soep=0)
+
+joint.p <- bind_rows(soep.p, vskt.p)
+
+
 
