@@ -169,7 +169,8 @@ lm <- lm(educ~ brutto_zens_2012+age_g+ spez_scheidung + rentenanspruch_2012+exp_
 summary(lm)
 
 ### Income, Age and Working experience show the highest effect
-
+spearman2(educ~ brutto_zens_2012+age_g+ spez_scheidung + rentenanspruch_2012+exp_arbeit_20_bis2012+exp_al_20_bis2012+alg_j_2012,
+          p=2, data=soep.men.active)
 
 ## doing the same for VSKT
 
@@ -290,6 +291,12 @@ fused_inc89.plot <- fused_inc89.plot + scale_fill_manual("Datensatz", labels= c(
 
 fused_inc89.plot
 
+### Kolmogorov-Smirnoff-Test tells us that Distributions are identical
+
+ks.active <- ks.test(fA.nnd$rente_total_2013, vskt.m.active$rente_total_2013, alternative = "two.sided")
+
+
+
 ggsave("fuincome89.pdf")
 
 fused_alg89.plot <- joint2 %>% 
@@ -396,7 +403,7 @@ rente.plot <- joint.p2 %>%
 rente.plot <- rente.plot + xlab("Rentenhöhe in €") + ylab("Dichte")
 rente.plot <- rente.plot + ggtitle("Vergleich der (Alters)Rentenhöhe in 2012 in SOEP und VSKT") +theme_minimal() 
 rente.plot <- rente.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-rente.plot <- rente.plot + scale_x_continuous(limits = c(1, 50000))
+rente.plot <- rente.plot + scale_x_continuous(limits = c(1, 65000))
 
 rente.plot
 
@@ -443,7 +450,7 @@ ggsave("unemptimerente.pdf")
 
 
 pp <- cowplot::plot_grid(age.plot, rente.plot, unempexprente.plot, worktimerente.plot, nrow = 2, ncol = 2)
-ggsave("grid3.pdf", p)
+ggsave("grid3.pdf", pp)
 
 
 
@@ -484,8 +491,8 @@ soep.passive.vars <- setdiff(names(soep.m.passive), names(vskt.m.passive)) # ava
 
 vskt.passive.vars <- setdiff(names(vskt.m.passive), names(soep.m.passive)) # available just in VSKT
 
-(X.mtc <- c("rente_total_2012", "exp_arbeit_20_bis2012", "age"))
-(X2.mtc <- c("rente_total_2012", "age"))
+(Xp.mtc <- c("rente_total_2012", "exp_arbeit_20_bis2012", "age"))
+(Xp2.mtc <- c("rente_total_2012", "age"))
 
 
 ### donation class em_rente define as factor first:
@@ -506,11 +513,131 @@ str(vskt.m.passive$em_rente)
 ### nearest neighbor distance matching using the L^{inf} norm and lpSolv constrained matching algorythm
 
 
-nnd.hd <- NND.hotdeck(data.rec=soep.m.passive, data.don=vskt.m.passive,
-                      match.vars=X.mtc, 
+nnd.hd.passive <- NND.hotdeck(data.rec=soep.m.passive, data.don=vskt.m.passive,
+                      match.vars=Xp.mtc, 
                       don.class = "em_rente",
                       dist.fun = "minimax",
                       rank = TRUE,
                       constrained = TRUE,
                       constr.alg = "lpSolve",
                       k=5)
+
+fA.nnd.passive <- create.fused(data.rec=soep.m.passive, data.don=vskt.m.passive,
+                       mtc.ids=nnd.hd.passive$mtc.ids,
+                       z.vars=vskt.passive.vars)
+
+
+summary(nnd.hd.passive$dist.rd)
+
+### make boxplot with dist.rd
+pdf('boxplotpassive.pdf')
+box <- boxplot(nnd.hd.passive$dist.rd, xlab="Supremumsnorm") 
+title("Boxplot der Supremumsnormdistanzen zwischen SOEP and VSKT Rentnern")
+dev.off()
+
+save(fA.nnd.passive, file = "fusedpassive.RDA")
+save(nnd.hd.passive, file = "matchedpassive.RDA")
+
+
+### diagnostics for passive population ####
+load("fusedpassive.RDA")
+load("matchedpassive.RDA")
+### prefereably put densities of VSKT and fused data set into one grid in order to compare
+### of course it now makes sense to compare the non matching variables!
+
+# main focus! after fusion the distributional structure should have prevailed!
+
+fA.nnd.passive <- fA.nnd.passive %>% 
+  mutate(vskt=0)
+
+vskt.m.passive <- vskt.m.passive %>% 
+  mutate(vskt=1)
+
+joint.post <- bind_rows(fA.nnd.passive, vskt.m.passive)
+
+
+fused_rente13.plot <- joint.post %>% 
+  ggplot() + 
+  geom_density(aes(x=rente_total_2013, fill = factor(vskt)), alpha = 0.4) 
+fused_rente13.plot <- fused_rente13.plot + xlab("Rentenhöhe in €") + ylab("Dichte")
+fused_rente13.plot <- fused_rente13.plot + ggtitle("Vergleich der Renten in 2013 in fused Data Set und VSKT") +theme_minimal() 
+fused_rente13.plot <- fused_rente13.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
+fused_rente13.plot <- fused_rente13.plot + scale_x_continuous(limits = c(1, 30000))
+
+fused_rente13.plot
+
+ggsave("furente13.pdf")
+
+
+#### Performing Kolmogorov-Smirnoff-Test for equality of Distributions
+
+ks <- ks.test(fA.nnd.passive$rente_total_2013, vskt.m.passive$rente_total_2013, alternative = "two.sided")
+        
+
+### does not really work because there are so many zero values
+#####
+
+
+
+
+fused_inc00.plot <- joint.post %>% 
+  ggplot() + 
+  geom_density(aes(x=brutto_zens_2000, fill = factor(vskt)), alpha = 0.4) 
+fused_inc00.plot <- fused_inc00.plot + xlab("Einkommen in €") + ylab("Dichte")
+fused_inc00.plot <- fused_inc00.plot + ggtitle("Vergleich der Einkommen in 2000 fused Data Set und VSKT") +theme_minimal() 
+fused_inc00.plot <- fused_inc00.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
+fused_inc00.plot <- fused_inc00.plot + scale_x_continuous(limits = c(1, 55000))
+fused_inc00.plot
+### does not really work because there are so many zero values
+
+ggsave("fuincpassive.pdf")
+
+
+ks2 <- ks.test(fA.nnd.passive$brutto_zens_2000, vskt.m.passive$brutto_zens_2000, alternative = "two.sided")
+
+
+
+### An so on ask Timm which ones!
+
+### Put them in a grid!
+
+### Also beamer template for presentation DIW...
+
+# Calculate the common x and y range 
+(xrng = range(c(fA.nnd.passive$rente_total_2013, vskt.m.passive$rente_total_2013)))
+(yrng = range(c(fA.nnd.passive$gbja, vskt.m.passive$gbja)))
+
+# Calculate the 2d density estimate over the common range
+d1 = kde2d(fA.nnd$brutto_zens_2011, fA.nnd$gbja, lims=c(xrng, yrng), n=200)
+d2 = kde2d(vskt.m.active$brutto_zens_2011, vskt.m.active$gbja, lims=c(xrng, yrng), n=200)
+
+# Confirm that the grid points for each density estimate are identical
+identical(d1$x, d2$x) # TRUE
+identical(d1$y, d2$y) # TRUE
+
+# Calculate the difference between the 2d density estimates
+diff12 = d1 
+diff12$z = d2$z - d1$z
+
+## Melt data into long format
+# First, add row and column names (x and y grid values) to the z-value matrix
+rownames(diff12$z) = diff12$x
+colnames(diff12$z) = diff12$y
+
+# Now melt it to long format
+diff12.m = melt(diff12$z, id.var=rownames(diff12))
+names(diff12.m) = c("Rentenhöhe","Geburtsjahr","z")
+
+# Plot difference between densities
+ggplot(diff12.m, aes(Rentenhöhe, Geburtsjahr, z=z, fill=z)) +
+  geom_tile() +
+  theme_classic() +
+  stat_contour(aes(colour=..level..), binwidth=0.001) +
+  scale_fill_gradient2(low="red",mid="white", high="turquoise4", midpoint=0) +
+  scale_colour_gradient2(low="red", mid="white", high="turquoise4", midpoint=0) +
+  coord_cartesian(xlim=xrng, ylim=yrng) +
+  guides(colour=FALSE) +
+  ggtitle("Contour-Differenzen zwischen Fused Data und VSKT: Rentenhöhe 2013")
+
+ggsave("differencepassive.pdf")
+
