@@ -641,3 +641,31 @@ ggplot(diff12.m, aes(Rentenhöhe, Geburtsjahr, z=z, fill=z)) +
 
 ggsave("differencepassive.pdf")
 
+
+##### save as .RDA and .dta
+
+load("fused.RDA")
+load("fusedpassive.RDA")
+
+fA.nnd <- fA.nnd %>% 
+  mutate(age_g = factor(age_g)) %>% 
+  mutate(educ_cat = as.character(educ_cat)) %>% 
+  mutate(em_rente = as.character(em_rente)) %>% 
+  mutate(spez_scheidung = as.character(spez_scheidung)) %>% 
+  mutate(rente_total_2012=0)
+
+fA.nnd.passive <- fA.nnd.passive %>% 
+  mutate(age_g = as.character(age_g)) %>% 
+  mutate(educ_cat = as.character(educ_cat)) %>% 
+  mutate(em_rente = as.character(em_rente)) %>% 
+  mutate(spez_scheidung = as.character(spez_scheidung))
+
+joint.men <- bind_rows(fA.nnd, fA.nnd.passive)
+
+save(joint.men, file="joint_men.RDA")
+
+write.dta(joint.men, file = "joint_men.dta")
+
+
+
+
