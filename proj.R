@@ -661,6 +661,8 @@ fA.nnd.passive <- fA.nnd.passive %>%
   mutate(spez_scheidung = as.character(spez_scheidung))
 
 joint.men <- bind_rows(fA.nnd, fA.nnd.passive)
+joint.men <- joint.men %>% 
+  mutate(sex=0)
 
 save(joint.men, file="joint_men.RDA")
 

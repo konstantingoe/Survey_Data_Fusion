@@ -689,6 +689,8 @@ fA.nnd.passive <- fA.nnd.passive %>%
 
 
 joint.women <- bind_rows(fA.nnd, fA.nnd.passive)
+joint.women <- joint.women %>% 
+  mutate(sex=1)
 
 save(joint.women, file="joint_women.RDA")
 
@@ -701,10 +703,13 @@ load("joint_women.RDA")
 load("joint_men.RDA")
 
 joint.total <-  bind_rows(joint.women, joint.men)
+joint.total <- joint.total %>% 
+  select(-soep) %>% 
+  select(-bbfamstd)
 
 save(joint.total, file="joint_total.RDA")
 
 write.dta(joint.total, file = "joint_total.dta")
 
-
+ 
 
