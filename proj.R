@@ -65,9 +65,11 @@ joint <- bind_rows(soep.men.active, vskt.m.active)
 anwartschaften.plot <- joint %>% 
     ggplot() + 
     geom_density(aes(x=rentenanspruch_2012, fill = factor(soep)), alpha = 0.4) 
-anwartschaften.plot <- anwartschaften.plot + xlab("Rentenawartschaften in €") + ylab("Dichte")
-anwartschaften.plot <- anwartschaften.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in SOEP und VSKT") +theme_minimal() 
+anwartschaften.plot <- anwartschaften.plot + xlab("Rentenawartschaften in €") + ylab("Dichte") + theme_minimal()
+#anwartschaften.plot <- anwartschaften.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in SOEP und VSKT")  
 anwartschaften.plot <- anwartschaften.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
+anwartschaften.plot <- anwartschaften.plot + scale_x_continuous(limits = c(1, 3000))
+
 
 anwartschaften.plot
     
@@ -76,8 +78,8 @@ ggsave("anwartschaften.pdf")
 birthyear.plot <- joint %>% 
   ggplot() + 
   geom_density(aes(x=gbja, fill = factor(soep)), alpha = 0.4) 
-birthyear.plot <- birthyear.plot + xlab("Geburtsjahr") + ylab("Dichte")
-birthyear.plot <- birthyear.plot + ggtitle("Vergleich der Geburtsjahrgänge in SOEP und VSKT") +theme_minimal() 
+birthyear.plot <- birthyear.plot + xlab("Geburtsjahr") + ylab("Dichte") +theme_minimal()
+#birthyear.plot <- birthyear.plot + ggtitle("Vergleich der Geburtsjahrgänge in SOEP und VSKT")  
 birthyear.plot <- birthyear.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
 
 birthyear.plot
@@ -88,9 +90,10 @@ ggsave("birthyear.pdf")
 income.plot <- joint %>% 
   ggplot() + 
   geom_density(aes(x=brutto_zens_2012, fill = factor(soep)), alpha = 0.4) 
-income.plot <- income.plot + xlab("Arbeitseinkommen in €") + ylab("Dichte")
-income.plot <- income.plot + ggtitle("Vergleich der 2012 Einkommen in SOEP und VSKT") +theme_minimal() 
+income.plot <- income.plot + xlab("Arbeitseinkommen (2012) in €") + ylab("Dichte") +theme_minimal() 
+#income.plot <- income.plot + ggtitle("Vergleich der 2012 Einkommen in SOEP und VSKT") 
 income.plot <- income.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
+income.plot <- income.plot + scale_x_continuous(limits = c(1, 70000))
 
 income.plot
 
@@ -100,9 +103,10 @@ ggsave("income.pdf")
 worktime.plot <- joint %>% 
   ggplot() + 
   geom_density(aes(x=exp_arbeit_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-worktime.plot <- worktime.plot + xlab("Arbeitserfahrung in Monaten") + ylab("Dichte")
-worktime.plot <- worktime.plot + ggtitle("Vergleich der Arbeitserfahrung in SOEP und VSKT") +theme_minimal() 
+worktime.plot <- worktime.plot + xlab("Arbeitserfahrung in Monaten") + ylab("Dichte") +theme_minimal() 
+#worktime.plot <- worktime.plot + ggtitle("Vergleich der Arbeitserfahrung in SOEP und VSKT") 
 worktime.plot <- worktime.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
+#worktime.plot <- worktime.plot + scale_x_continuous(limits = c(1, 700))
 
 worktime.plot
 
@@ -111,11 +115,11 @@ ggsave("wtime.pdf")
 unempben.plot <- joint %>% 
   ggplot() + 
   geom_density(aes(x=alg_j_2012, fill = factor(soep)), alpha = 0.4) 
-unempben.plot <- unempben.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte")
-unempben.plot <- unempben.plot + ggtitle("Vergleich Arbeitslosengeld in SOEP und VSKT") +theme_minimal() 
+unempben.plot <- unempben.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte") +theme_minimal() 
+#unempben.plot <- unempben.plot + ggtitle("Vergleich Arbeitslosengeld in SOEP und VSKT") 
 unempben.plot <- unempben.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"), 
                                                    values = c("gold","turquoise4"))
-unempben.plot <- unempben.plot + scale_x_continuous(limits = c(10, 18000))
+unempben.plot <- unempben.plot + scale_x_continuous(limits = c(1, 18000))
 unempben.plot 
 
 ggsave("unempben.pdf") 
@@ -124,8 +128,8 @@ ggsave("unempben.pdf")
 unempexp.plot <- joint %>% 
   ggplot() + 
   geom_density(aes(x=exp_al_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-unempexp.plot <- unempexp.plot + xlab("Monate in Arbeitslosigkeit") + ylab("Dichte")
-unempexp.plot <- unempexp.plot + ggtitle("Vergleich der Arbeitslosigkeitsdauer in SOEP und VSKT") +theme_minimal() 
+unempexp.plot <- unempexp.plot + xlab("Monate in Arbeitslosigkeit") + ylab("Dichte")+theme_minimal() 
+#unempexp.plot <- unempexp.plot + ggtitle("Vergleich der Arbeitslosigkeitsdauer in SOEP und VSKT") 
 unempexp.plot <- unempexp.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),
                                                    values = c("gold","turquoise4"))
 unempexp.plot <- unempexp.plot + scale_x_continuous(limits = c(1, 200)) 
@@ -136,12 +140,52 @@ unempexp.plot
 ggsave("unemptime.pdf")
 
 
-p <- cowplot::plot_grid(birthyear.plot, anwartschaften.plot)
+p <- cowplot::plot_grid(birthyear.plot, anwartschaften.plot, ncol = 2)
 ggsave("grid1.pdf", p)
 
 
 q <- cowplot::plot_grid(unempexp.plot, unempben.plot, worktime.plot, income.plot, ncol=2, nrow=2)
 ggsave("grid2.pdf", q)
+
+
+## Kolmogorov-Smirnoff-Test for equality of conditional distributions
+
+
+test.soep <- soep.men.active %>% 
+         mutate(rentenanspruch_2012 = ifelse(rentenanspruch_2012>0,rentenanspruch_2012, NA)) %>% 
+         mutate(brutto_zens_2012 = ifelse(brutto_zens_2012>0, brutto_zens_2012, NA)) %>% 
+         mutate(alg_j_2012 = ifelse(alg_j_2012>0, alg_j_2012, NA)) %>% 
+         mutate(exp_al_20_bis2012 = ifelse(exp_al_20_bis2012>0, alg_j_2012, NA))
+
+
+test.vst <- vskt.m.active %>% 
+  mutate(rentenanspruch_2012 = ifelse(rentenanspruch_2012>0,rentenanspruch_2012, NA))%>% 
+  mutate(brutto_zens_2012 = ifelse(brutto_zens_2012>0, brutto_zens_2012, NA)) %>% 
+  mutate(alg_j_2012 = ifelse(alg_j_2012>0, alg_j_2012, NA)) %>% 
+  mutate(exp_al_20_bis2012 = ifelse(exp_al_20_bis2012>0, alg_j_2012, NA))
+
+
+
+ks.test(test.soep$rentenanspruch_2012, test.vst$rentenanspruch_2012, alternative = "two.sided")
+### reject equality of rentenanwartschaften
+
+ks.test(test.soep$gbja, test.vst$gbja, alternative = "two.sided")
+### reject equality of gebja equailty
+
+ks.test(test.soep$brutto_zens_2012, test.vst$brutto_zens_2012, alternative = "two.sided")
+### reject equality of income equailty
+
+ks.test(test.soep$exp_arbeit_20_bis2012, test.vst$exp_arbeit_20_bis2012, alternative = "two.sided")
+### reject equality of working experience
+
+ks.test(test.soep$alg_j_2012, test.vst$alg_j_2012, alternative = "two.sided")
+### reject equality of conditional distribution of unemployment benefit
+
+ks.test(test.soep$exp_al_20_bis2012, test.vst$exp_al_20_bis2012, alternative = "two.sided")
+### reject equality of conditional distribution of unemployment benefit
+
+
+
 
 ## here a randomForest evaluation of the most important matching variables might be fruitful!
 ## In general one should choose those X_m that have jointly the highest correlation (reduction in Variance)
@@ -285,15 +329,15 @@ joint2 <- bind_rows(fA.nnd, vskt.m.active)
 fused_inc89.plot <- joint2 %>% 
   ggplot() + 
   geom_density(aes(x=brutto_zens_1998, fill = factor(vskt)), alpha = 0.4) 
-fused_inc89.plot <- fused_inc89.plot + xlab("Einkommen in €") + ylab("Dichte")
-fused_inc89.plot <- fused_inc89.plot + ggtitle("Vergleich der Einkommen in 1989 in fused Data Set und VSKT") +theme_minimal() 
+fused_inc89.plot <- fused_inc89.plot + xlab("Einkommen in €") + ylab("Dichte")+theme_minimal() 
+#fused_inc89.plot <- fused_inc89.plot + ggtitle("Vergleich der Einkommen in 1989 in fused Data Set und VSKT")  
 fused_inc89.plot <- fused_inc89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
 
 fused_inc89.plot
 
 ### Kolmogorov-Smirnoff-Test tells us that Distributions are identical
 
-ks.active <- ks.test(fA.nnd$rente_total_2013, vskt.m.active$rente_total_2013, alternative = "two.sided")
+ks.test(fA.nnd$rente_total_2013, vskt.m.active$rente_total_2013, alternative = "two.sided")
 
 
 
@@ -302,13 +346,18 @@ ggsave("fuincome89.pdf")
 fused_alg89.plot <- joint2 %>% 
   ggplot() + 
   geom_density(aes(x=alg_j_1989, fill = factor(vskt)), alpha = 0.4) 
-fused_alg89.plot <- fused_alg89.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte")
-fused_alg89.plot <- fused_alg89.plot + ggtitle("Vergleich des Arbeitslosengeldes in 1989 in fused Data Set und VSKT") +theme_minimal() 
+fused_alg89.plot <- fused_alg89.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte") +theme_minimal() 
+#fused_alg89.plot <- fused_alg89.plot + ggtitle("Vergleich des Arbeitslosengeldes in 1989 in fused Data Set und VSKT") 
 fused_alg89.plot <- fused_alg89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
-fused_alg89.plot <- fused_alg89.plot + scale_x_continuous(limits = c(10, 18000))
+fused_alg89.plot <- fused_alg89.plot + scale_x_continuous(limits = c(1, 18000))
 fused_alg89.plot
 
 ggsave("fualg89.pdf")
+
+
+ks.test(fA.nnd$alg_j_1989, vskt.m.active$alg_j_1989, alternative = "two.sided")
+
+### KS Test tells us that they are identical
 
 ### An so on ask Timm which ones!
 
@@ -350,7 +399,7 @@ ggplot(diff12.m, aes(Einkommen, Geburtsjahr, z=z, fill=z)) +
   scale_colour_gradient2(low="red", mid="white", high="turquoise4", midpoint=0) +
   coord_cartesian(xlim=xrng, ylim=yrng) +
   guides(colour=FALSE) +
-  ggtitle("Contour-Differenzen zwischen Fused Data und VSKT")
+  ggtitle("Einkommens-Contour-Differenzen zwischen Fused Data und VSKT")
 
 ggsave("difference.pdf")
 
@@ -360,8 +409,17 @@ ggsave("difference.pdf")
 ## I would rather write a function that automates the Nearest Neighbor Random Hot Deck Matching
 ## However: Aint't nobody got time for this 
 
-
-
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------------------------------------#
 
 #### Import SOEP passive #####
 
@@ -400,8 +458,8 @@ joint.p2 <- joint.p %>%
 rente.plot <- joint.p2 %>% 
   ggplot() + 
   geom_density(aes(x=rente_total_2012, fill = factor(soep)), alpha = 0.4) 
-rente.plot <- rente.plot + xlab("Rentenhöhe in €") + ylab("Dichte")
-rente.plot <- rente.plot + ggtitle("Vergleich der (Alters)Rentenhöhe in 2012 in SOEP und VSKT") +theme_minimal() 
+rente.plot <- rente.plot + xlab("Rentenhöhe (ohne EM) in €") + ylab("Dichte")  +theme_minimal() 
+#rente.plot <- rente.plot + ggtitle("Vergleich der (Alters)Rentenhöhe in 2012 in SOEP und VSKT")
 rente.plot <- rente.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
 rente.plot <- rente.plot + scale_x_continuous(limits = c(1, 65000))
 
@@ -412,8 +470,8 @@ ggsave("rente.pdf")
 age.plot <- joint.p2 %>% 
   ggplot() + 
   geom_density(aes(x=gbja, fill = factor(soep)), alpha = 0.4) 
-age.plot <- age.plot + xlab("Geburtsjahr") + ylab("Dichte")
-age.plot <- age.plot + ggtitle("Vergleich der Geburtsjahrgänge der Rentner (inkl. EM-Rente) in SOEP und VSKT") +theme_minimal() 
+age.plot <- age.plot + xlab("Geburtsjahr (ohne EM)") + ylab("Dichte") +theme_minimal()
+#age.plot <- age.plot + ggtitle("Vergleich der Geburtsjahrgänge der Rentner (inkl. EM-Rente) in SOEP und VSKT")  
 age.plot <- age.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
 
 age.plot
@@ -424,8 +482,8 @@ ggsave("age.pdf")
 worktimerente.plot <- joint.p %>% 
   ggplot() + 
   geom_density(aes(x=exp_arbeit_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-worktimerente.plot <- worktimerente.plot + xlab("Arbeitserfahrung in Monaten der Rentner (ikl. EM-Rente") + ylab("Dichte")
-worktimerente.plot <- worktimerente.plot + ggtitle("Vergleich der Arbeitserfahrung in SOEP und VSKT") +theme_minimal() 
+worktimerente.plot <- worktimerente.plot + xlab("Arbeitserfahrung in Monaten der Rentner (ikl. EM-Rente)") + ylab("Dichte") +theme_minimal() 
+#worktimerente.plot <- worktimerente.plot + ggtitle("Vergleich der Arbeitserfahrung in SOEP und VSKT") 
 worktimerente.plot <- worktimerente.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
 
 worktimerente.plot
@@ -437,8 +495,8 @@ ggsave("wtimerente.pdf")
 unempexprente.plot <- joint.p %>% 
   ggplot() + 
   geom_density(aes(x=exp_al_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-unempexprente.plot <- unempexprente.plot + xlab("Monate in Arbeitslosigkeit") + ylab("Dichte")
-unempexprente.plot <- unempexprente.plot + ggtitle("Vergleich der Arbeitslosigkeitsdauer der Rentner in SOEP und VSKT") +theme_minimal() 
+unempexprente.plot <- unempexprente.plot + xlab("Monate in Arbeitslosigkeit (inkl. EM-Rentner)") + ylab("Dichte")+theme_minimal() 
+#unempexprente.plot <- unempexprente.plot + ggtitle("Vergleich der Arbeitslosigkeitsdauer der Rentner in SOEP und VSKT") +theme_minimal() 
 unempexprente.plot <- unempexprente.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),
                                                    values = c("gold","turquoise4"))
 unempexprente.plot <- unempexprente.plot + scale_x_continuous(limits = c(1, 200)) 
@@ -559,8 +617,8 @@ joint.post <- bind_rows(fA.nnd.passive, vskt.m.passive)
 fused_rente13.plot <- joint.post %>% 
   ggplot() + 
   geom_density(aes(x=rente_total_2013, fill = factor(vskt)), alpha = 0.4) 
-fused_rente13.plot <- fused_rente13.plot + xlab("Rentenhöhe in €") + ylab("Dichte")
-fused_rente13.plot <- fused_rente13.plot + ggtitle("Vergleich der Renten in 2013 in fused Data Set und VSKT") +theme_minimal() 
+fused_rente13.plot <- fused_rente13.plot + xlab("Rentenhöhe 2013 in €") + ylab("Dichte") +theme_minimal() 
+#fused_rente13.plot <- fused_rente13.plot + ggtitle("Vergleich der Renten in 2013 in fused Data Set und VSKT") +theme_minimal() 
 fused_rente13.plot <- fused_rente13.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
 fused_rente13.plot <- fused_rente13.plot + scale_x_continuous(limits = c(1, 30000))
 
@@ -571,7 +629,7 @@ ggsave("furente13.pdf")
 
 #### Performing Kolmogorov-Smirnoff-Test for equality of Distributions
 
-ks <- ks.test(fA.nnd.passive$rente_total_2013, vskt.m.passive$rente_total_2013, alternative = "two.sided")
+ks.test(fA.nnd.passive$rente_total_2013, vskt.m.passive$rente_total_2013, alternative = "two.sided")
         
 
 ### does not really work because there are so many zero values
@@ -583,8 +641,8 @@ ks <- ks.test(fA.nnd.passive$rente_total_2013, vskt.m.passive$rente_total_2013, 
 fused_inc00.plot <- joint.post %>% 
   ggplot() + 
   geom_density(aes(x=brutto_zens_2000, fill = factor(vskt)), alpha = 0.4) 
-fused_inc00.plot <- fused_inc00.plot + xlab("Einkommen in €") + ylab("Dichte")
-fused_inc00.plot <- fused_inc00.plot + ggtitle("Vergleich der Einkommen in 2000 fused Data Set und VSKT") +theme_minimal() 
+fused_inc00.plot <- fused_inc00.plot + xlab("Einkommen 2000 in €") + ylab("Dichte") +theme_minimal() 
+#fused_inc00.plot <- fused_inc00.plot + ggtitle("Vergleich der Einkommen in 2000 fused Data Set und VSKT") 
 fused_inc00.plot <- fused_inc00.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
 fused_inc00.plot <- fused_inc00.plot + scale_x_continuous(limits = c(1, 55000))
 fused_inc00.plot
@@ -593,7 +651,7 @@ fused_inc00.plot
 ggsave("fuincpassive.pdf")
 
 
-ks2 <- ks.test(fA.nnd.passive$brutto_zens_2000, vskt.m.passive$brutto_zens_2000, alternative = "two.sided")
+ks.test(fA.nnd.passive$brutto_zens_2000, vskt.m.passive$brutto_zens_2000, alternative = "two.sided")
 
 
 
@@ -637,13 +695,12 @@ ggplot(diff12.m, aes(Rentenhöhe, Geburtsjahr, z=z, fill=z)) +
   scale_colour_gradient2(low="red", mid="white", high="turquoise4", midpoint=0) +
   coord_cartesian(xlim=xrng, ylim=yrng) +
   guides(colour=FALSE) +
-  ggtitle("Contour-Differenzen zwischen Fused Data und VSKT: Rentenhöhe 2013")
+  ggtitle("2013-Renten Contour-Differenzen zwischen Fused Data und VSKT")
 
 ggsave("differencepassive.pdf")
 
 
 ##### save as .RDA and .dta
-
 load("fused.RDA")
 load("fusedpassive.RDA")
 
