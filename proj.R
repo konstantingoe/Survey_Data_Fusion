@@ -24,6 +24,26 @@ clear.labels <- function(x) {
 }
 
 
+###------------------- Functions for Matching -----------------------###
+
+# Density comparison
+
+
+mydensplot <- function(blavar){
+  joint %>% 
+    ggplot() +
+    geom_density(aes_string(x=blavar, fill = "soep"), alpha = 0.4) +
+    xlab("Rentenawartschaften in €") + 
+    ylab("Dichte") + 
+    theme_minimal() +
+    scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4")) +
+    scale_x_continuous(limits = c(1, 3000))
+}
+
+#finally
+
+
+
 #### Import SOEP - full active population #####
 
 soep.men.active <- import(paste(path, "soep_2012_m_aktiv.dta" , sep = "/"), setclass = "data.table")
@@ -59,7 +79,9 @@ soep.men.active <- soep.men.active %>%
 vskt.m.active <- vskt.m.active %>% 
   mutate(soep=0)
 
-joint <- bind_rows(soep.men.active, vskt.m.active)
+joint <- joint %>% 
+bind_rows(soep.men.active, vskt.m.active) %>% 
+mutate(soep = factor(soep, ordered = F)) 
 
 
 anwartschaften.plot <- joint %>% 
