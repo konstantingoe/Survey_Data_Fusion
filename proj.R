@@ -7,41 +7,9 @@ source("packages.R")
 #setwd(path) in path.R
 source(".path.R")
 
+
+source("functions.R")
 ####### Initiation ##########
-
-#### Functions
-
-clear.labels <- function(x) {
-  if(is.list(x)) {
-    for(i in 1 : length(x)) class(x[[i]]) <- setdiff(class(x[[i]]), 'labelled') 
-    for(i in 1 : length(x)) attr(x[[i]],"label") <- NULL
-  }
-  else {
-    class(x) <- setdiff(class(x), "labelled")
-    attr(x, "label") <- NULL
-  }
-  return(x)
-}
-
-
-###------------------- Functions for Matching -----------------------###
-
-# Density comparison
-
-
-mydensplot <- function(blavar){
-  joint %>% 
-    ggplot() +
-    geom_density(aes_string(x=blavar, fill = "soep"), alpha = 0.4) +
-    xlab("Rentenawartschaften in €") + 
-    ylab("Dichte") + 
-    theme_minimal() +
-    scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4")) +
-    scale_x_continuous(limits = c(1, 3000))
-}
-
-#finally
-
 
 
 #### Import SOEP - full active population #####
@@ -63,7 +31,7 @@ head(vskt.m.active)
 
 
 
-### Now check for imprtant variables:
+### Now check for important variables:
 
 #### Define common variables ####
 
@@ -79,86 +47,32 @@ soep.men.active <- soep.men.active %>%
 vskt.m.active <- vskt.m.active %>% 
   mutate(soep=0)
 
+joint <- bind_rows(soep.men.active, vskt.m.active)
 joint <- joint %>% 
-bind_rows(soep.men.active, vskt.m.active) %>% 
 mutate(soep = factor(soep, ordered = F)) 
 
-
-anwartschaften.plot <- joint %>% 
-    ggplot() + 
-    geom_density(aes(x=rentenanspruch_2012, fill = factor(soep)), alpha = 0.4) 
-anwartschaften.plot <- anwartschaften.plot + xlab("Rentenawartschaften in €") + ylab("Dichte") + theme_minimal()
-#anwartschaften.plot <- anwartschaften.plot + ggtitle("Vergleich der Rentenanwartschaften in 2012 in SOEP und VSKT")  
-anwartschaften.plot <- anwartschaften.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-anwartschaften.plot <- anwartschaften.plot + scale_x_continuous(limits = c(1, 3000))
-
-
-anwartschaften.plot
-    
+####### Pension entitlements
+anwartschaften.plot <- mydensplot(joint, "rentenanspruch_2012", xname="Rentenanwartschaften in EUR", lmts = c(1,3000))
 ggsave("anwartschaften.pdf")
 
-birthyear.plot <- joint %>% 
-  ggplot() + 
-  geom_density(aes(x=gbja, fill = factor(soep)), alpha = 0.4) 
-birthyear.plot <- birthyear.plot + xlab("Geburtsjahr") + ylab("Dichte") +theme_minimal()
-#birthyear.plot <- birthyear.plot + ggtitle("Vergleich der Geburtsjahrgänge in SOEP und VSKT")  
-birthyear.plot <- birthyear.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-
-birthyear.plot
-
+####### Birthyear
+birthyear.plot <- mydensplot(joint, "gbja", xname="Geburtsjahr")
 ggsave("birthyear.pdf")
 
-
-income.plot <- joint %>% 
-  ggplot() + 
-  geom_density(aes(x=brutto_zens_2012, fill = factor(soep)), alpha = 0.4) 
-income.plot <- income.plot + xlab("Arbeitseinkommen (2012) in €") + ylab("Dichte") +theme_minimal() 
-#income.plot <- income.plot + ggtitle("Vergleich der 2012 Einkommen in SOEP und VSKT") 
-income.plot <- income.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-income.plot <- income.plot + scale_x_continuous(limits = c(1, 70000))
-
-income.plot
-
+####### Icome
+income.plot <- mydensplot(joint, "brutto_zens_2012", xname = "Arbeitseinkommen (2012) in €", lmts = c(1, 70000))
 ggsave("income.pdf")
 
-
-worktime.plot <- joint %>% 
-  ggplot() + 
-  geom_density(aes(x=exp_arbeit_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-worktime.plot <- worktime.plot + xlab("Arbeitserfahrung in Monaten") + ylab("Dichte") +theme_minimal() 
-#worktime.plot <- worktime.plot + ggtitle("Vergleich der Arbeitserfahrung in SOEP und VSKT") 
-worktime.plot <- worktime.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-#worktime.plot <- worktime.plot + scale_x_continuous(limits = c(1, 700))
-
-worktime.plot
-
+####### Worktime
+worktime.plot <- mydensplot(joint, "exp_arbeit_20_bis2012",xname = "Arbeitserfahrung in Monaten")
 ggsave("wtime.pdf")
 
-unempben.plot <- joint %>% 
-  ggplot() + 
-  geom_density(aes(x=alg_j_2012, fill = factor(soep)), alpha = 0.4) 
-unempben.plot <- unempben.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte") +theme_minimal() 
-#unempben.plot <- unempben.plot + ggtitle("Vergleich Arbeitslosengeld in SOEP und VSKT") 
-unempben.plot <- unempben.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"), 
-                                                   values = c("gold","turquoise4"))
-unempben.plot <- unempben.plot + scale_x_continuous(limits = c(1, 18000))
-unempben.plot 
-
+####### Unemployment benefit 
+unempben.plot <- mydensplot(joint, "alg_j_2012",xname = "Arbeitslosengeld in €", lmts = c(1,18000))
 ggsave("unempben.pdf") 
-  
 
-unempexp.plot <- joint %>% 
-  ggplot() + 
-  geom_density(aes(x=exp_al_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-unempexp.plot <- unempexp.plot + xlab("Monate in Arbeitslosigkeit") + ylab("Dichte")+theme_minimal() 
-#unempexp.plot <- unempexp.plot + ggtitle("Vergleich der Arbeitslosigkeitsdauer in SOEP und VSKT") 
-unempexp.plot <- unempexp.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),
-                                                   values = c("gold","turquoise4"))
-unempexp.plot <- unempexp.plot + scale_x_continuous(limits = c(1, 200)) 
-
-unempexp.plot
-
-
+####### Unemployment exprerience  
+unempexp.plot <- mydensplot(joint, "exp_al_20_bis2012",xname = "Monate in Arbeitslosigkeit", lmts = c(1,200))
 ggsave("unemptime.pdf")
 
 
@@ -170,8 +84,11 @@ q <- cowplot::plot_grid(unempexp.plot, unempben.plot, worktime.plot, income.plot
 ggsave("grid2.pdf", q)
 
 
-## Kolmogorov-Smirnoff-Test for equality of conditional distributions
-
+#------------------------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------------------------------#
+#######  Kolmogorov-Smirnoff-Test for equality of conditional distributions #####
+#------------------------------------------------------------------------------------------------------#
+#------------------------------------------------------------------------------------------------------#
 
 test.soep <- soep.men.active %>% 
          mutate(rentenanspruch_2012 = ifelse(rentenanspruch_2012>0,rentenanspruch_2012, NA)) %>% 
@@ -347,45 +264,32 @@ vskt.m.active <- vskt.m.active %>%
 
 joint2 <- bind_rows(fA.nnd, vskt.m.active)
 
+joint2 <- joint2 %>% 
+  mutate(vskt=factor(vskt, ordered = F))
 
-fused_inc89.plot <- joint2 %>% 
-  ggplot() + 
-  geom_density(aes(x=brutto_zens_1998, fill = factor(vskt)), alpha = 0.4) 
-fused_inc89.plot <- fused_inc89.plot + xlab("Einkommen in €") + ylab("Dichte")+theme_minimal() 
-#fused_inc89.plot <- fused_inc89.plot + ggtitle("Vergleich der Einkommen in 1989 in fused Data Set und VSKT")  
-fused_inc89.plot <- fused_inc89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
-
-fused_inc89.plot
+##### Income 1989
+fused_inc89.plot <- mydensplot.post(joint2, "brutto_zens_1998", xname = "Einkommen in €")
+ggsave("fuincome89.pdf")
 
 ### Kolmogorov-Smirnoff-Test tells us that Distributions are identical
-
 ks.test(fA.nnd$rente_total_2013, vskt.m.active$rente_total_2013, alternative = "two.sided")
 
 
-
-ggsave("fuincome89.pdf")
-
-fused_alg89.plot <- joint2 %>% 
-  ggplot() + 
-  geom_density(aes(x=alg_j_1989, fill = factor(vskt)), alpha = 0.4) 
-fused_alg89.plot <- fused_alg89.plot + xlab("Arbeitslosengeld in €") + ylab("Dichte") +theme_minimal() 
-#fused_alg89.plot <- fused_alg89.plot + ggtitle("Vergleich des Arbeitslosengeldes in 1989 in fused Data Set und VSKT") 
-fused_alg89.plot <- fused_alg89.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
-fused_alg89.plot <- fused_alg89.plot + scale_x_continuous(limits = c(1, 18000))
-fused_alg89.plot
-
+##### Unemployment benefit 1989
+fused_alg89.plot <- mydensplot.post(joint2, "alg_j_1989", xname = "Arbeitslosengeld in €", lmts=c(1, 18000))
 ggsave("fualg89.pdf")
 
 
 ks.test(fA.nnd$alg_j_1989, vskt.m.active$alg_j_1989, alternative = "two.sided")
-
 ### KS Test tells us that they are identical
 
-### An so on ask Timm which ones!
 
-### Put them in a grid!
+### Put them in a grid
+pp <- cowplot::plot_grid(fused_inc89.plot, fused_alg89.plot, ncol = 2)
+ggsave("grid3.pdf", pp)
 
-### Also beamer template for presentation DIW...
+
+### Graphical diagnostics
 
 # Calculate the common x and y range 
 (xrng = range(c(fA.nnd$brutto_zens_2011, vskt.m.active$brutto_zens_2011)))
@@ -426,6 +330,9 @@ ggplot(diff12.m, aes(Einkommen, Geburtsjahr, z=z, fill=z)) +
 ggsave("difference.pdf")
 
 
+#mydiagnostics(fA.nnd, vskt.m.active, var1=brutto_zens_2011, var2=gbja)
+# make it work later this week
+
 ##### Matching passive male population ######
 
 ## I would rather write a function that automates the Nearest Neighbor Random Hot Deck Matching
@@ -457,10 +364,6 @@ vskt.m.passive <- clear.labels(vskt.m.passive)
 
 head(vskt.m.passive)
 
-
-### Now same as above! Also write function for this!
-
-
 # Variables available in both datasets
 
 (xp.vars <- intersect(names(soep.m.passive), names(vskt.m.passive)))
@@ -472,60 +375,27 @@ vskt.m.passive <- vskt.m.passive %>%
   mutate(soep=0)
 
 joint.p <- bind_rows(soep.m.passive, vskt.m.passive)
+joint.p <- joint.p %>% 
+  mutate(soep=factor(soep, ordered = F))
 
 joint.p2 <- joint.p %>% 
   subset(em_rente==0) %>% 
   select(-em_rente)
 
-rente.plot <- joint.p2 %>% 
-  ggplot() + 
-  geom_density(aes(x=rente_total_2012, fill = factor(soep)), alpha = 0.4) 
-rente.plot <- rente.plot + xlab("Rentenhöhe (ohne EM) in €") + ylab("Dichte")  +theme_minimal() 
-#rente.plot <- rente.plot + ggtitle("Vergleich der (Alters)Rentenhöhe in 2012 in SOEP und VSKT")
-rente.plot <- rente.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-rente.plot <- rente.plot + scale_x_continuous(limits = c(1, 65000))
-
-rente.plot
-
+### Pension total 
+rente.plot <- mydensplot(joint.p2, "rente_total_2012", xname = "Rentenhöhe (ohne EM) in €", lmts =c(1, 65000))
 ggsave("rente.pdf")
 
-age.plot <- joint.p2 %>% 
-  ggplot() + 
-  geom_density(aes(x=gbja, fill = factor(soep)), alpha = 0.4) 
-age.plot <- age.plot + xlab("Geburtsjahr (ohne EM)") + ylab("Dichte") +theme_minimal()
-#age.plot <- age.plot + ggtitle("Vergleich der Geburtsjahrgänge der Rentner (inkl. EM-Rente) in SOEP und VSKT")  
-age.plot <- age.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-
-age.plot
-
+### Age density
+age.plot <- mydensplot(joint.p2, "gbja", xname = "Geburtsjahr (ohne EM)")
 ggsave("age.pdf")
 
-
-worktimerente.plot <- joint.p %>% 
-  ggplot() + 
-  geom_density(aes(x=exp_arbeit_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-worktimerente.plot <- worktimerente.plot + xlab("Arbeitserfahrung in Monaten der Rentner (ikl. EM-Rente)") + ylab("Dichte") +theme_minimal() 
-#worktimerente.plot <- worktimerente.plot + ggtitle("Vergleich der Arbeitserfahrung in SOEP und VSKT") 
-worktimerente.plot <- worktimerente.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4"))
-
-worktimerente.plot
-
+### Workingtime passive
+worktimerente.plot <- mydensplot(joint.p, "exp_arbeit_20_bis2012", xname = "Arbeitserfahrung in Monaten der Rentner (ikl. EM-Rente)")
 ggsave("wtimerente.pdf")
 
-
-
-unempexprente.plot <- joint.p %>% 
-  ggplot() + 
-  geom_density(aes(x=exp_al_20_bis2012, fill = factor(soep)), alpha = 0.4) 
-unempexprente.plot <- unempexprente.plot + xlab("Monate in Arbeitslosigkeit (inkl. EM-Rentner)") + ylab("Dichte")+theme_minimal() 
-#unempexprente.plot <- unempexprente.plot + ggtitle("Vergleich der Arbeitslosigkeitsdauer der Rentner in SOEP und VSKT") +theme_minimal() 
-unempexprente.plot <- unempexprente.plot + scale_fill_manual("Datensatz", labels= c("VSKT","SOEP"),
-                                                   values = c("gold","turquoise4"))
-unempexprente.plot <- unempexprente.plot + scale_x_continuous(limits = c(1, 200)) 
-
-unempexprente.plot
-
-
+### Unemployment entitlements
+unempexprente.plot <- mydensplot(joint.p, "exp_al_20_bis2012", xname = "Monate in Arbeitslosigkeit (inkl. EM-Rentner)", lmts = c(1, 200))
 ggsave("unemptimerente.pdf")
 
 
@@ -635,17 +505,11 @@ vskt.m.passive <- vskt.m.passive %>%
 
 joint.post <- bind_rows(fA.nnd.passive, vskt.m.passive)
 
+joint.post <- joint.post %>% 
+  mutate(vskt=factor(vskt,ordered = F))
 
-fused_rente13.plot <- joint.post %>% 
-  ggplot() + 
-  geom_density(aes(x=rente_total_2013, fill = factor(vskt)), alpha = 0.4) 
-fused_rente13.plot <- fused_rente13.plot + xlab("Rentenhöhe 2013 in €") + ylab("Dichte") +theme_minimal() 
-#fused_rente13.plot <- fused_rente13.plot + ggtitle("Vergleich der Renten in 2013 in fused Data Set und VSKT") +theme_minimal() 
-fused_rente13.plot <- fused_rente13.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
-fused_rente13.plot <- fused_rente13.plot + scale_x_continuous(limits = c(1, 30000))
-
-fused_rente13.plot
-
+### Pension in 2013
+fused_rente13.plot <- mydensplot.post(joint.post, "rente_total_2013", xname = "Rentenhöhe 2013 in €", lmts =c(1, 30000))
 ggsave("furente13.pdf")
 
 
@@ -655,33 +519,19 @@ ks.test(fA.nnd.passive$rente_total_2013, vskt.m.passive$rente_total_2013, altern
         
 
 ### does not really work because there are so many zero values
-#####
 
 
 
 
-fused_inc00.plot <- joint.post %>% 
-  ggplot() + 
-  geom_density(aes(x=brutto_zens_2000, fill = factor(vskt)), alpha = 0.4) 
-fused_inc00.plot <- fused_inc00.plot + xlab("Einkommen 2000 in €") + ylab("Dichte") +theme_minimal() 
-#fused_inc00.plot <- fused_inc00.plot + ggtitle("Vergleich der Einkommen in 2000 fused Data Set und VSKT") 
-fused_inc00.plot <- fused_inc00.plot + scale_fill_manual("Datensatz", labels= c("FUSED","VSKT"),values = c("turquoise4","gold"))
-fused_inc00.plot <- fused_inc00.plot + scale_x_continuous(limits = c(1, 55000))
-fused_inc00.plot
-### does not really work because there are so many zero values
+#### Income 2000
 
+fused_inc00.plot <- mydensplot.post(joint.post, "brutto_zens_2000", xname ="Einkommen 2000 in €", lmts =  c(1, 55000))
 ggsave("fuincpassive.pdf")
 
 
 ks.test(fA.nnd.passive$brutto_zens_2000, vskt.m.passive$brutto_zens_2000, alternative = "two.sided")
+### does not really work because there are so many zero values
 
-
-
-### An so on ask Timm which ones!
-
-### Put them in a grid!
-
-### Also beamer template for presentation DIW...
 
 # Calculate the common x and y range 
 (xrng = range(c(fA.nnd.passive$rente_total_2013, vskt.m.passive$rente_total_2013)))
