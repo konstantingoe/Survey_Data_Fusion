@@ -31,6 +31,20 @@ mydensplot <- function(data, xvar, xname=xname, lmts = NULL){
 }
 
 
+mydistplot <- function(data, xvar, xname=xname){
+  data %>% 
+    ggplot() +
+    stat_ecdf(aes_string(x=xvar, colour = "soep"), alpha = 0.8) +
+    xlab(xname) + 
+    ylab("cumulative percent") + 
+    theme_minimal() +
+    scale_colour_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4")) 
+}
+
+
+
+
+
 mydensplot.post <- function(data, xvar, xname=xname, lmts = NULL){
   data %>% 
     ggplot() + 
