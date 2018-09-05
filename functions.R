@@ -19,10 +19,10 @@ clear.labels <- function(x) {
 # Density comparison
 
 
-mydensplot <- function(data, xvar, xname=xname, lmts = NULL){
+mydensplot <- function(data, xvar, xname=xname, weight=NULL, lmts = NULL){
   data %>% 
     ggplot() +
-    geom_density(aes_string(x=xvar, fill = "soep"), alpha = 0.4) +
+    geom_density(aes_string(x=xvar, fill = "soep", weight=weight), alpha = 0.4) +
     xlab(xname) + 
     ylab("Dichte") + 
     theme_minimal() +
@@ -57,12 +57,14 @@ mydensplot.post <- function(data, xvar, xname=xname, lmts = NULL){
 }
 
 
-mydiagnostics <- function(data1, data2, var1=var1, var2=var2){
+mydiagnostics.test <- function(var1, var2){
   
   
   # Calculate the common x and y range 
-  (xrng = range(c(data1$var1, data2$var1)))
-  (yrng = range(c(data1$var2, data2$var2)))
+  xrng = range(c(fA.nnd$var1, vskt.mp$var1), finite=T, na.rm = T)
+  yrng = range(c(fA.nnd$var2, vskt.mp$var2), finite=T, na.rm = T)
+  
+}
   
   # Calculate the 2d density estimate over the common range
   d1 = kde2d(data1$var1, data1$var2, lims=c(xrng, yrng), n=200)
@@ -85,8 +87,12 @@ mydiagnostics <- function(data1, data2, var1=var1, var2=var2){
   diff12.m = melt(diff12$z, id.var=rownames(diff12))
   names(diff12.m) = c("Einkommen","Geburtsjahr","z")
   
+}
+
+mydiagnostics <- function(data1, data2){
+  
   # Plot difference between densities
-  ggplot(diff12.m, aes(Einkommen, Geburtsjahr, z=z, fill=z)) +
+  ggplot(diff12.m, aes_string(data1, data2, z="z", fill="z")) +
     geom_tile() +
     theme_classic() +
     stat_contour(aes(colour=..level..), binwidth=0.001) +

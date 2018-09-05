@@ -13,19 +13,25 @@ vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass
 
 soep.mp <- soep.mp %>% 
   mutate(soep=1) %>% 
-  mutate(gbja_cat = factor(gbja_cat, ordered = T))
+  mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
+  mutate(wgt=1500)
 
 vskt.mp <- vskt.mp %>% 
   mutate(soep=0) %>% 
-  mutate(gbja_cat = factor(gbja_cat, ordered = T))
+  mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
+  mutate(wgt=weight)
 
 
 joint <- bind_rows(soep.mp, vskt.mp)
 joint <- joint %>% 
-  mutate(soep = factor(soep, ordered = F)) 
+  mutate(soep = factor(soep, ordered = F))
+
 
 (birthplot <- mydensplot(joint, "gbja", xname = "Geburtskohorte"))
 ggsave("geburtsjahr_mp.pdf")
+
+(birthplot <- mydensplot(joint, "gbja", xname = "Geburtskohorte", weight = "wgt"))
+ggsave("geburtsjahr_mp_weighted.pdf")
 
 
 (birthdist <- mydistplot(joint, "gbja", xname = "Geburtskohorte")) 
@@ -44,11 +50,18 @@ ggsave("rente_dist.pdf")
 ks.test(soep.mp$rente_2015_gesamt, vskt.mp$rente_2015_gesamt, alternative = "two.sided")
 
 vskt.vars <- setdiff(names(vskt.mp), names(soep.mp)) # available just in VSKT
+(Xp.mtc <- c("rente_2015_gesamt", "exp_arbeit"))
+(Xp.mtc2 <- c("rente_2015_gesamt", "exp_arbeit", "gbja"))
+(donclass1 <- c("gbja_cat","sex"))
+(donclass2 <- "sex")
+
+
+
 
 
 nnd.hd <- NND.hotdeck(data.rec=soep.mp, data.don=vskt.mp,
-                      match.vars="rente_2015_gesamt", 
-                      don.class = c("gbja_cat","sex"),
+                      match.vars=Xp.mtc2, 
+                      don.class = donclass2,
                       dist.fun = "minimax",
                       rank = TRUE,
                       constrained = TRUE,
@@ -92,16 +105,21 @@ ks.test(fA.nnd$exp_arbeit_20_bis2015, vskt.mp$exp_arbeit_20_bis2015, alternative
 
 ggsave("exparb15.pdf")
 
+fused_exp_al.plot <- mydensplot.post(joint.post, "exp_al_20_bis2015", xname = "Arbeitslosenzeit 2015 in Jahren")
+ks.test(fA.nnd$exp_al_20_bis2015, vskt.mp$exp_al_20_bis2015, alternative = "two.sided")
 
-#### Experience Arbeit 2015 2d densityplot
+ggsave("expal15.pdf")
+
+
+#### Experience Arbeitslosigkeit 2015 2d densityplot
 
 # Calculate the common x and y range 
-(xrng = range(c(fA.nnd$exp_arbeit_20_bis2015, vskt.mp$exp_arbeit_20_bis2015)))
+(xrng = range(c(fA.nnd$exp_al_20_bis2015, vskt.mp$exp_al_20_bis2015)))
 (yrng = range(c(fA.nnd$gbja, vskt.mp$gbja)))
 
 # Calculate the 2d density estimate over the common range
-d1 = kde2d(fA.nnd$exp_arbeit_20_bis2015, fA.nnd$gbja, lims=c(xrng, yrng), n=200)
-d2 = kde2d(vskt.mp$exp_arbeit_20_bis2015, vskt.mp$gbja, lims=c(xrng, yrng), n=200)
+d1 = kde2d(fA.nnd$exp_al_20_bis2015, fA.nnd$gbja, lims=c(xrng, yrng), n=200)
+d2 = kde2d(vskt.mp$exp_al_20_bis2015, vskt.mp$gbja, lims=c(xrng, yrng), n=200)
 
 # Confirm that the grid points for each density estimate are identical
 identical(d1$x, d2$x) # TRUE
@@ -118,10 +136,13 @@ colnames(diff12$z) = diff12$y
 
 # Now melt it to long format
 diff12.m = melt(diff12$z, id.var=rownames(diff12))
-names(diff12.m) = c("Arbeitserfahrung","Geburtsjahr","z")
+names(diff12.m) = c("Arbeitslosenzeit","Geburtsjahr","z")
+
+mydiagnostics.test("exp_al_20_bis2015", "gbja")
+
 
 # Plot difference between densities
-ggplot(diff12.m, aes(Arbeitserfahrung, Geburtsjahr, z=z, fill=z)) +
+ggplot(diff12.m, aes(Arbeitslosenzeit, Geburtsjahr, z=z, fill=z)) +
   geom_tile() +
   theme_classic() +
   stat_contour(aes(colour=..level..), binwidth=0.001) +
@@ -129,6 +150,6 @@ ggplot(diff12.m, aes(Arbeitserfahrung, Geburtsjahr, z=z, fill=z)) +
   scale_colour_gradient2(low="red", mid="white", high="turquoise4", midpoint=0) +
   coord_cartesian(xlim=xrng, ylim=yrng) +
   guides(colour=FALSE) +
-  ggtitle("2015-Arbeitserfahrung Contour-Differenzen zwischen Fused Data und VSKT")
+  ggtitle("2015-Arbeitslosenzeit Contour-Differenzen zwischen Fused Data und VSKT")
 
 ggsave("differencepassive_new15.pdf")
