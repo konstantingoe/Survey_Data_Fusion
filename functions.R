@@ -31,7 +31,7 @@ mydensplot <- function(data, xvar, xname=xname, weight=NULL, lmts = NULL){
 }
 
 
-mydistplot <- function(data, xvar, xname=xname){
+mydistplot <- function(data, xvar, xname=xname, weight=NULL){
   data %>% 
     ggplot() +
     stat_ecdf(aes_string(x=xvar, colour = "soep"), alpha = 0.8) +
@@ -64,7 +64,7 @@ mydiagnostics.test <- function(var1, var2){
   xrng = range(c(fA.nnd$var1, vskt.mp$var1), finite=T, na.rm = T)
   yrng = range(c(fA.nnd$var2, vskt.mp$var2), finite=T, na.rm = T)
   
-}
+
   
   # Calculate the 2d density estimate over the common range
   d1 = kde2d(data1$var1, data1$var2, lims=c(xrng, yrng), n=200)

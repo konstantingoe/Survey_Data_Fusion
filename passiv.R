@@ -30,24 +30,54 @@ joint <- joint %>%
 (birthplot <- mydensplot(joint, "gbja", xname = "Geburtskohorte"))
 ggsave("geburtsjahr_mp.pdf")
 
-(birthplot <- mydensplot(joint, "gbja", xname = "Geburtskohorte", weight = "wgt"))
+(birthplot.w <- mydensplot(joint, "gbja", xname = "Geburtskohorte (gewichtet)", weight = "wgt"))
 ggsave("geburtsjahr_mp_weighted.pdf")
 
 
 (birthdist <- mydistplot(joint, "gbja", xname = "Geburtskohorte")) 
 ggsave("geburtsjahr_dist_mp.pdf")
 
+plot.grdgbja <- cowplot::plot_grid(birthplot, birthplot.w, birthdist, ncol=2, nrow=2)
+ggsave("grid_passiv1.pdf", plot.grdgbja)
 
 
-ks.test(soep.mp$gbja, vskt.mp$gbja, alternative = "two.sided")
+(kstest.gbja <- ks.test(soep.mp$gbja, vskt.mp$gbja, alternative = "two.sided"))
+
 
 
 (rentenplot <- mydensplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in €"))
 ggsave("rente_mp.pdf")
+
+(rentenplot.w <- mydensplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in € (gewichtet)", weight="wgt"))
+ggsave("rente_mp_weighted.pdf")
+
 (rentendist <- mydistplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in €"))
 ggsave("rente_dist.pdf")
 
-ks.test(soep.mp$rente_2015_gesamt, vskt.mp$rente_2015_gesamt, alternative = "two.sided")
+(kstest.rente <- ks.test(soep.mp$rente_2015_gesamt, vskt.mp$rente_2015_gesamt, alternative = "two.sided"))
+
+plot.grdrente <- cowplot::plot_grid(rentenplot, rentenplot.w, rentendist, ncol=2, nrow=2)
+ggsave("grid_passiv2.pdf", plot.grdrente)
+
+
+#df.res <- data.frame(D = c(kstest.gbja$statistic, kstest.rente$statistic),
+#                     `p value` = c(kstest.gbja$p.value, kstest.rente$p.value))
+#stargazer(df.res)
+
+#### checking multivariate correlation structure (usually)
+
+### It might be worth adding a income indicator sth like 
+### last observed income
+
+### Pension, Birthyear and Working experience show the highest effect (sex as donation class)
+spearman2(education~ sex+gbja+ exp_arbeit+ rente_2015_gesamt,
+          p=2, data=soep.mp)
+
+## doing the same for VSKT
+
+spearman2(brutto_zens_1998~ sex+gbja+ exp_arbeit +rente_2015_gesamt,
+          p=2, data=vskt.mp)
+
 
 vskt.vars <- setdiff(names(vskt.mp), names(soep.mp)) # available just in VSKT
 (Xp.mtc <- c("rente_2015_gesamt", "exp_arbeit"))
