@@ -87,8 +87,6 @@ vskt.vars <- setdiff(names(vskt.mp), names(soep.mp)) # available just in VSKT
 
 
 
-
-
 nnd.hd <- NND.hotdeck(data.rec=soep.mp, data.don=vskt.mp,
                       match.vars=Xp.mtc2, 
                       don.class = donclass2,
@@ -101,6 +99,22 @@ nnd.hd <- NND.hotdeck(data.rec=soep.mp, data.don=vskt.mp,
 fA.nnd <- create.fused(data.rec=soep.mp, data.don=vskt.mp,
                        mtc.ids=nnd.hd$mtc.ids,
                        z.vars=vskt.vars)
+
+
+save(nnd.hd, file = "match_passiv_gesamt.RDA")
+save(fA.nnd, file = "fused_passiv_gesamt.RDA")
+
+##########################################################
+##########################################################
+##########################################################
+                  ### diagnostics####
+##########################################################
+##########################################################
+##########################################################
+
+
+#load("match_passiv_gesamt.RDA")
+#load("fused_passiv_gesamt.RDA")
 
 
 summary(nnd.hd$dist.rd)
@@ -123,23 +137,85 @@ joint.post <- bind_rows(fA.nnd, vskt.mp)
 joint.post <- joint.post %>% 
   mutate(vskt=factor(vskt,ordered = F))
 
-### Pension in 2015
-fused_rente15.plot <- mydensplot.post(joint.post, "rente_j_2015", xname = "Rentenhöhe 2015 in €", lmts =c(1, 40000))
+### Einkommen in 89
+(fused_income89.plot <- mydensplot.post(joint.post, "rente_j_2015", xname = "Rentenhöhe 2015 in €", lmts =c(1, 40000)))
+ggsave("fuincome_passive15.pdf")
+
+(fused_income89.distplot <- mydistplot.post(joint.post, "rente_j_2015", xname = "Rentenhöhe 2015 in €"))
+ggsave("fuincome_passive15dist.pdf")
+
 ks.test(fA.nnd$rente_j_2015, vskt.mp$rente_j_2015, alternative = "two.sided")
+###
 
-ggsave("furente15.pdf")
+### Arbeitserfahrung
+(fused_exp_arbeit.plot <- mydensplot.post(joint.post, "exp_arbeit_20_bis2015", xname = "Arbeitserfahrung 2015 in Jahren"))
+ggsave("exparb15_passive.pdf")
 
+(fused_exp_arbeit.distplot <- mydistplot.post(joint.post, "exp_arbeit_20_bis2015", xname = "Arbeitserfahrung 2015 in Jahren"))
+ggsave("exparb15_passivedist.pdf")
 
-fused_exp_arbeit.plot <- mydensplot.post(joint.post, "exp_arbeit_20_bis2015", xname = "Arbeitserfahrung 2015 in Jahren")
 ks.test(fA.nnd$exp_arbeit_20_bis2015, vskt.mp$exp_arbeit_20_bis2015, alternative = "two.sided")
+###
 
-ggsave("exparb15.pdf")
 
-fused_exp_al.plot <- mydensplot.post(joint.post, "exp_al_20_bis2015", xname = "Arbeitslosenzeit 2015 in Jahren")
+### Arbeitslosenzeit
+(fused_exp_al.plot <- mydensplot.post(joint.post, "exp_al_20_bis2015", xname = "Arbeitslosenzeit 2015 in Jahren"))
+ggsave("expal15_passive.pdf")
+
+(fused_exp_al.distplot <- mydistplot.post(joint.post, "exp_al_20_bis2015", xname = "Arbeitslosenzeit 2015 in Jahren"))
+ggsave("expal15_passivedist.pdf")
+
 ks.test(fA.nnd$exp_al_20_bis2015, vskt.mp$exp_al_20_bis2015, alternative = "two.sided")
+###
 
-ggsave("expal15.pdf")
+### Grid
+plot.inc.exp <- cowplot::plot_grid(fused_income89.plot, fused_income89.distplot, fused_exp_arbeit.plot, fused_exp_arbeit.distplot, ncol=2, nrow=2)
+ggsave("grid_passiv3.pdf", plot.inc.exp)
 
+plot.alexp <- cowplot::plot_grid(fused_exp_al.plot, fused_exp_al.distplot, ncol=2, nrow=1)
+ggsave("grid_passiv4.pdf", plot.alexp)
+###
+
+
+#### Arbeitszeit 2015 2d densityplot
+
+# Calculate the common x and y range 
+(xrng = range(c(fA.nnd$exp_arbeit_20_bis2015, vskt.mp$exp_arbeit_20_bis2015)))
+(yrng = range(c(fA.nnd$gbja, vskt.mp$gbja)))
+
+# Calculate the 2d density estimate over the common range
+d1 = kde2d(fA.nnd$exp_arbeit_20_bis2015, fA.nnd$gbja, lims=c(xrng, yrng), n=200)
+d2 = kde2d(vskt.mp$exp_arbeit_20_bis2015, vskt.mp$gbja, lims=c(xrng, yrng), n=200)
+
+# Confirm that the grid points for each density estimate are identical
+identical(d1$x, d2$x) # TRUE
+identical(d1$y, d2$y) # TRUE
+
+# Calculate the difference between the 2d density estimates
+diff12 = d1 
+diff12$z = d2$z - d1$z
+
+## Melt data into long format
+# First, add row and column names (x and y grid values) to the z-value matrix
+rownames(diff12$z) = diff12$x
+colnames(diff12$z) = diff12$y
+
+# Now melt it to long format
+diff12.m = melt(diff12$z, id.var=rownames(diff12))
+names(diff12.m) = c("Arbeitszeit","Geburtsjahr","z")
+
+# Plot difference between densities
+ggplot(diff12.m, aes(Arbeitszeit, Geburtsjahr, z=z, fill=z)) +
+  geom_tile() +
+  theme_classic() +
+  stat_contour(aes(colour=..level..), binwidth=0.001) +
+  scale_fill_gradient2(low="red",mid="white", high="turquoise4", midpoint=0) +
+  scale_colour_gradient2(low="red", mid="white", high="turquoise4", midpoint=0) +
+  coord_cartesian(xlim=xrng, ylim=yrng) +
+  guides(colour=FALSE) +
+  ggtitle("2015-Arbeitszeit Contour-Differenzen zwischen Fused Data und VSKT")
+
+ggsave("diffpassivearbeit_new15.pdf")
 
 #### Experience Arbeitslosigkeit 2015 2d densityplot
 
@@ -167,9 +243,6 @@ colnames(diff12$z) = diff12$y
 # Now melt it to long format
 diff12.m = melt(diff12$z, id.var=rownames(diff12))
 names(diff12.m) = c("Arbeitslosenzeit","Geburtsjahr","z")
-
-mydiagnostics.test("exp_al_20_bis2015", "gbja")
-
 
 # Plot difference between densities
 ggplot(diff12.m, aes(Arbeitslosenzeit, Geburtsjahr, z=z, fill=z)) +
