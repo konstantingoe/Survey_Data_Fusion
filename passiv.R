@@ -113,8 +113,8 @@ save(fA.nnd, file = "fused_passiv_gesamt.RDA")
 ##########################################################
 
 
-#load("match_passiv_gesamt.RDA")
-#load("fused_passiv_gesamt.RDA")
+load("match_passiv_gesamt.RDA")
+load("fused_passiv_gesamt.RDA")
 
 
 summary(nnd.hd$dist.rd)
@@ -256,3 +256,20 @@ ggplot(diff12.m, aes(Arbeitslosenzeit, Geburtsjahr, z=z, fill=z)) +
   ggtitle("2015-Arbeitslosenzeit Contour-Differenzen zwischen Fused Data und VSKT")
 
 ggsave("differencepassive_new15.pdf")
+
+
+
+#### It might be worth to check the rank hot deck performance with weights...
+#### that sounds really promising!
+
+save(fA.nnd, file="passive_all.RDA")
+
+write.dta(fA.nnd, file = "passive_all.dta")
+
+
+
+
+
+
+
+
