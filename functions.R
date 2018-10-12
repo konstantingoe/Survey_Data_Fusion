@@ -30,6 +30,16 @@ mydensplot <- function(data, xvar, xname=xname, weight=NULL, lmts = NULL){
     scale_x_continuous(limits = lmts)
 }
 
+mydensplot.sim <- function(data, xvar, xname=xname, weight=NULL, lmts = NULL){
+  data %>% 
+    ggplot() +
+    geom_density(aes_string(x=xvar, fill = "a", weight=weight), alpha = 0.4) +
+    xlab(xname) + 
+    ylab("Dichte") + 
+    theme_minimal() +
+    scale_fill_manual("Datensatz", labels= c("A","B"),values = c("gold","turquoise4")) +
+    scale_x_continuous(limits = lmts)
+}
 
 mydistplot <- function(data, xvar, xname=xname){
   data %>% 

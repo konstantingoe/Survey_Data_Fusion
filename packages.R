@@ -31,6 +31,7 @@ pacman::p_load(
   stargazer,
   strucchange,
   rio,
+  tree,
   gridExtra,
   cowplot,
   randomForest,
