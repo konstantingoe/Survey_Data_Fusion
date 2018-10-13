@@ -66,6 +66,17 @@ mydensplot.post <- function(data, xvar, xname=xname, lmts = NULL){
     scale_x_continuous(limits = lmts)
 }
 
+mydensplot.post.sim <- function(data, xvar, xname=xname, lmts = NULL){
+  data %>% 
+    ggplot() + 
+    geom_density(aes_string(x=xvar, fill = "b"), alpha = 0.4) +
+    xlab(xname) + 
+    ylab("Density") +
+    theme_minimal() +
+    scale_fill_manual("Data Set", labels= c("FUSED","B"),values = c("turquoise4","gold")) +
+    scale_x_continuous(limits = lmts)
+}
+
 
 mydistplot.post <- function(data, xvar, xname=xname){
   data %>% 
@@ -129,6 +140,27 @@ mydiagnostics <- function(data1, data2){
 
 
 
+eta.fcn <- function (glm.yx)
+{
+  # function to compute the table of eta and
+  # partial eta coefficients:
+  #
+  # eta= SS_{effect}/SS_{total}
+  # partial.eta = SS_{effect}/(SS_{effect}+SS_{error})
+  #
+  # starting from the ANOVA table.
+  # glm.xy is an lm or glm object.
+  #
+  anova.yx <- anova(glm.yx)
+  dev.tot <- anova.yx[1,4]
+  dev.res <- deviance(glm.yx)
+  anova.yx <- anova.yx[-1,-4]
+  eta <- anova.yx[,2]/dev.tot
+  eta.p <- anova.yx[,2]/(dev.res+anova.yx[,2])
+  out <- cbind(anova.yx[,-3], eta=eta, eta.p=eta.p)
+  out <- out[order(out[,"eta"], decreasing = T),]
+  list( dev.tot=dev.tot, dev.res=dev.res, anova=out)
+}
 
 
 

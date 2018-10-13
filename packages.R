@@ -32,6 +32,8 @@ pacman::p_load(
   strucchange,
   rio,
   tree,
+  bnlearn,
+  rpart,
   gridExtra,
   cowplot,
   randomForest,
