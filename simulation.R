@@ -13,6 +13,8 @@ vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass
 # then take data set A and randomly drop 2/3 of the data... then match the full dataset B with 
 # (X,Z) onto the smaller data set A with (X,Y).
 
+# use Hellinger distance as a dissimilarity measure of the X
+
 # todo: go into stata and reproduce rentenfile with income information as well...
 
 #### Sample Selection ####
@@ -56,30 +58,56 @@ joint <- joint %>%
 
 #1st step: check linear models
 
-glm.modelA <- glm(education ~ sex + gbja + rente_2015_gesamt + exp_arbeit, data = A) 
+#for A
+glm.modelA <- glm(education ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = A) 
 summary(glm.modelA, correlation=F)
 step.glm.modelA <- step(glm.modelA, trace=F)
 step.glm.modelA$anova
 
 eta.fcn(step.glm.modelA)
 
+#for B
+
+glm.modelB <- glm(income ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = B) 
+summary(glm.modelB, correlation=F)
+step.glm.modelB <- step(glm.modelB, trace=F)
+step.glm.modelB$anova
+
+eta.fcn(step.glm.modelB)
+
 #2nd step: nonlinear regression tools
-##### Fitting Regression Tree #####
+##### Fitting Random forest #####
 
-tree.A <- tree(education ~ sex + gbja + rente_2015_gesamt + exp_arbeit, 
-               data = A)
-summary(tree.A)
-plot(prune.tree(tree.A))
+#for A
 
-# maybe also random forest...
+forestA <- randomForest(education ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = A)
+varImpPlot(forestA,type=2)
 
- 
-# confirms the use of rente_2015_gesamt and gbja as matching variables!
+(VI_FA <- importance(forestA, type=2, scale = F))
+
+barplot(t(VI_FA/sum(VI_F)))
+
+#tree <- getTree(forestA,1,labelVar=TRUE)
+#d <- to.dendrogram(tree)
+#str(d)
+#plot(d,center=TRUE,leaflab='none',edgePar=list(t.cex=1,p.col=NA,p.lty=0))
+
+#for B
+
+
+forestB <- randomForest(income ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = B)
+varImpPlot(forestB,type=2)
+
+(VI_FB <- importance(forestB, type=2, scale = F))
+
+barplot(t(VI_FB/sum(VI_F)))
+
+# divorced is discarded in both variable selection models
 
 ##### Perform Matching ####
 
-X.mtc <- c("rente_2015_gesamt","gbja")
-donclass <- "sex"
+X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
+donclass <- c("sex", "divorced")
 
 
 #nearest neigbor distance hot deck
@@ -110,48 +138,48 @@ joint.post <- bind_rows(fused.1, B)
 joint.post <- joint.post %>% 
   mutate(b=factor(b,ordered = F))
 
-### Income post matching
+###### Post matching #####
+
+######  4th validation level #####
+# visually:
 (birthplot.post <- mydensplot.post.sim(joint.post, "income", xname = "Income in €"))#,lmts =c(1, 25000)))
+# statistically
 ks.test(fused.1$income, B$income, alternative = "two.sided")
 
-# but marginal distributions not preserved!
 
-# need a crosstable of where match ids correspond to original ids!
+#### 3rd evluation level ####
 
+lmjoint <- lm(income ~ education + sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced, 
+              data = soep)
+summary(lmjoint)
+lmfused <- lm(income ~ education + sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced, 
+              data = fused.1)
+summary(lmfused)
+
+## not very nice to do this 500 times...need better correlation procedure
+
+
+##### 2nd evaluation level #####
+
+# use cramer test to check f(x,y,z) has been preserved
+
+xyz.vars <- c(X.mtc, Y.vars, "income" )
+# we cannot include dichotome variables
+
+v <- factorsNumeric(select(soep, one_of(xyz.vars)))
+w <- factorsNumeric(select(fused.1, one_of(xyz.vars)))
+
+#takes a long long time!
+# but works great!
+cramer.test(as.matrix(v), as.matrix(w))
+
+
+
+##### 1st evaluation level ####
 #order by persnr and persnrB then create indicator variable which is one if two variables are different
 arrange(fused.1, persnr, persnrB)
 
 eval <- fused.1$persnr == fused.1$persnrB
 # choose smallest FALSE!
 table(eval)
-
-# find algorithm that maximizes TRUE!!
-#write.dta(fused.1, file = "match_1.dta")
-
-
-
-#### checking correlation structure ####
-
-# also correlation structure not preserved!
-
-# unlikely that the correlation structure has been preserved!
-# but maybe control for random sample..
-set.seed(1234)
-soep.small <- sample_frac(soep, 0.3, replace = F)
-
-lmjoint <- lm(income ~ education + sex + gbja + rente_2015_gesamt + exp_arbeit, 
-              data = soep.small)
-summary(lmjoint)
-lmfused <- lm(income ~ education + sex + gbja + rente_2015_gesamt + exp_arbeit, 
-              data = fused.1)
-summary(lmfused)
-
-# no still not
-
-# another idea... compare regressing income on education in the hopefully
-# properly matched (A U B) file with the later matchen (SOEP U VSKT).
-# parameter estimates should be similar when CIA is supposed to hold
-# for this look up how to test conditional independence in the full SOEP file!
-
-
 

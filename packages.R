@@ -38,6 +38,8 @@ pacman::p_load(
   cowplot,
   randomForest,
   dplyr,
+  cramer,
+  crossmatch,
   StatMatch,
   lpSolve,
   Hmisc,
