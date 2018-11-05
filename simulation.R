@@ -23,6 +23,10 @@ soep <- soep %>%
   mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
   mutate(sex = factor(sex, ordered = F))
 
+# CIA assumption
+CItest <- ci.test(x = "income", y = "education", z = c("sex","gbja", "rente_2015_gesamt","expunempl", "unempben" ,"expwork" , "divorced"), data = soep)
+
+
 soepA <- select(soep, -income)
 B <- select(soep, -education)
 
@@ -107,6 +111,17 @@ barplot(t(VI_FB/sum(VI_F)))
 ##### Perform Matching ####
 
 X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
+
+# Hellinger Distance for matching variable quality
+
+dist <- vector(length  = 5)
+dist[1] <- hellinger(A$rente_2015_gesamt,B$rente_2015_gesamt, lower = 0, upper = Inf)
+dist[2] <- hellinger(A$gbja,B$gbja)
+dist[3] <- hellinger(A$unempben,B$unempben, lower = 0, upper = Inf)
+dist[4] <- hellinger(A$expunempl,B$expunempl, lower = 0, upper = Inf)
+dist[5] <- hellinger(A$expwork,B$expwork, lower = 0, upper = Inf)
+
+
 donclass <- c("sex", "divorced")
 
 
@@ -145,6 +160,21 @@ joint.post <- joint.post %>%
 (birthplot.post <- mydensplot.post.sim(joint.post, "income", xname = "Income in €"))#,lmts =c(1, 25000)))
 # statistically
 ks.test(fused.1$income, B$income, alternative = "two.sided")
+ks.test(fused.1$gbja, B$gbja, alternative = "two.sided")
+
+# we can check both whether all X are marginally preserved, 
+# and whether X,Z has been maintained
+
+# marginals by ks.test
+
+xz.vars <- c(X.mtc, "income" )
+
+ksfused <- select(fused.1, one_of(xz.vars))
+ksB <- select(B, one_of(xz.vars))
+
+for (i in 1:6) {
+     ks.test(ksfused[,i], ksB[,i], alternative = "two.sided")$p.value
+}
 
 
 #### 3rd evluation level ####

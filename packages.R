@@ -33,6 +33,7 @@ pacman::p_load(
   rio,
   tree,
   bnlearn,
+  statip,
   rpart,
   gridExtra,
   cowplot,
