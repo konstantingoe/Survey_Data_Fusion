@@ -40,7 +40,6 @@ B <- B %>%
   mutate(a=0) %>% 
   mutate(persnrB = persnr)
 
-felix hats raus
 
 (X.vars <- intersect(names(A), names(B)))
 (Y.vars <- setdiff(names(A), names(B)))
