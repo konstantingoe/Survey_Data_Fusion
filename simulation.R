@@ -12,10 +12,7 @@ vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass
 # for this use soep twice delete in each set variables and keep X as common variables
 # then take data set A and randomly drop 2/3 of the data... then match the full dataset B with 
 # (X,Z) onto the smaller data set A with (X,Y).
-
-# use Hellinger distance as a dissimilarity measure of the X
-
-# todo: go into stata and reproduce rentenfile with income information as well...
+# repeat this 10.000 times!
 
 #### Sample Selection ####
 
@@ -112,33 +109,39 @@ barplot(t(VI_FB/sum(VI_F)))
 ##### Perform Matching ####
 
 X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
-
-# Hellinger Distance for matching variable quality
-
-dist <- vector(length  = 5)
-dist[1] <- hellinger(A$rente_2015_gesamt,B$rente_2015_gesamt, lower = 0, upper = Inf)
-dist[2] <- hellinger(A$gbja,B$gbja)
-dist[3] <- hellinger(A$unempben,B$unempben, lower = 0, upper = Inf)
-dist[4] <- hellinger(A$expunempl,B$expunempl, lower = 0, upper = Inf)
-dist[5] <- hellinger(A$expwork,B$expwork, lower = 0, upper = Inf)
-
-
 donclass <- c("sex", "divorced")
 
 
-#nearest neigbor distance hot deck
-match.1 <- NND.hotdeck(data.rec=A, data.don=B,
-                      match.vars=X.mtc, 
-                      don.class = donclass,
-                      dist.fun = "minimax",
-                      rank = TRUE,
-                      constrained = TRUE,
-                      constr.alg = "lpSolve",
-                      k=5)
+# Hellinger Distance for matching variable quality
+A.mtc <- select(A, one_of(X.mtc))
+B.mtc <- select(B, one_of(X.mtc))
 
-fused.1 <- create.fused(data.rec=A, data.don=B,
-                       mtc.ids=match.1$mtc.ids,
-                       z.vars=Z.vars)
+dist <- sapply(as.list(X.mtc), function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,y], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+
+
+##### simulation starts here ######
+
+
+#nearest neigbor distance hot deck
+
+#Distance functions that theoretically apply: Mahalanobis, minimax, and Gower
+#Obviously it does not 
+
+match1 <- distancehd(A, B, distfun = "minimax", algorithm = "lpSolve", nn=5)
+match2 <- distancehd(A, B, distfun = "Mahalanobis", algorithm = "lpSolve", nn=5)
+match3 <- distancehd(A, B, distfun = "Gower", algorithm = "lpSolve", nn=5)
+
+match12 <- distancehd(A, B, distfun = "minimax", algorithm = "hungarian", nn=1)
+match22 <- distancehd(A, B, distfun = "Mahalanobis", algorithm = "hungarian", nn=1)
+match32 <- distancehd(A, B, distfun = "Gower", algorithm = "hungarian", nn=1)
+
+fused1 <- fusing(A,B, data=match1)
+fused2 <- fusing(A,B, data=match2)
+fused3 <- fusing(A,B, data=match3)
+
+fused12 <- fusing(A,B, data=match12)
+fused22 <- fusing(A,B, data=match22)
+fused32 <- fusing(A,B, data=match32)
 
 summary(match.1$dist.rd)
 # distances are zero
@@ -158,14 +161,10 @@ joint.post <- joint.post %>%
 
 ######  4th validation level #####
 # visually:
-(birthplot.post <- mydensplot.post.sim(joint.post, "income", xname = "Income in €"))#,lmts =c(1, 25000)))
+(birthplot.post <- mydensplot.post.sim(joint.post, "gbja", xname = "Income in €"))#,lmts =c(1, 25000)))
+
 # statistically
-ks.test(fused.1$income, B$income, alternative = "two.sided")
-ks.test(fused.1$gbja, B$gbja, alternative = "two.sided")
-
 # we can check both whether all X are marginally preserved, 
-# and whether X,Z has been maintained
-
 # marginals by ks.test
 
 xz.vars <- c(X.mtc, "income" )
@@ -173,28 +172,50 @@ xz.vars <- c(X.mtc, "income" )
 ksfused <- select(fused.1, one_of(xz.vars))
 ksB <- select(B, one_of(xz.vars))
 
-for (i in 1:6) {
-     ks.test(ksfused[,i], ksB[,i], alternative = "two.sided")$p.value
+kstest <- rbind(xz.vars,sapply(as.list(xz.vars), function(x) ks.test(ksfused[,x], ksB[,x], alternative = "two.sided")$p.value))
+rownames(kstest, do.NULL = TRUE, prefix = "row")
+rownames(kstest) <- c("Variables","Kolmogorov-Smirnov p-value")
+
+# and whether X,Z has been maintained 
+# use generalized KS test <- Peacock test
+#that's a lot of combinations! <- 15 tests!
+
+combinationsmat <- combinations(n = 6, r = 2, v = xz.vars, set=T, repeats.allowed = F)
+
+distequaltest <- vector(length = 15)
+xznames <- vector(length = 15) 
+for (i in seq_row(combinationsmat)){
+  distequaltest[i] <-cramer.test(as.matrix(select(ksfused, one_of(c(combinationsmat[1,1:2])))), as.matrix(select(ksB, one_of(c(combinationsmat[1,1:2])))))$p.value
+}
+save(distequaltest, file = "xztest.RDA")
+for (i in seq_row(combinationsmat)){
+  xznames[i] <- paste(c(combinationsmat[i,1], "vs", combinationsmat[i,2]), collapse="  ")
 }
 
+distequalmat <- rbind(xznames, distequaltest)
 
 #### 3rd evluation level ####
 
-lmjoint <- lm(income ~ education + sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced, 
-              data = soep)
-summary(lmjoint)
-lmfused <- lm(income ~ education + sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced, 
-              data = fused.1)
-summary(lmfused)
+#### Correlation matrix approach #####
+xyz.vars <- c(X.mtc, Y.vars, "income" )
+soepcorr <- select(soep, one_of(xyz.vars))
+fused1corr <- select(fused.1, one_of(xyz.vars))
+corrmatfull <- round(cor(soepcorr),2)
+corrmatfused <- round(cor(fused1corr),2)
 
-## not very nice to do this 500 times...need better correlation procedure
+corrtestmat <- matrix(NA, nrow=7, ncol=7)
+for (i in 1:nrow(corrtestmat)) {
+  for (j in 1:ncol(corrtestmat)) {
+    corrtestmat[i,j] <- get.cocor.results(corrtest(corrmatfull[i,j],corrmatfused[i,j]))$fisher1925$p.value
+  }
+}
+corrtestmat[upper.tri(corrtestmat, diag = T)] <- NA
 
+# cannot reject the H0 that any of the correlation values are identical
 
 ##### 2nd evaluation level #####
 
 # use cramer test to check f(x,y,z) has been preserved
-
-xyz.vars <- c(X.mtc, Y.vars, "income" )
 # we cannot include dichotome variables
 
 v <- factorsNumeric(select(soep, one_of(xyz.vars)))
@@ -202,15 +223,14 @@ w <- factorsNumeric(select(fused.1, one_of(xyz.vars)))
 
 #takes a long long time!
 # but works great!
-cramer.test(as.matrix(v), as.matrix(w))
-
+xyztest <- cramer.test(as.matrix(v), as.matrix(w))
 
 
 ##### 1st evaluation level ####
 #order by persnr and persnrB then create indicator variable which is one if two variables are different
-arrange(fused.1, persnr, persnrB)
+arrange(fused32, persnr, persnrB)
 
-eval <- fused.1$persnr == fused.1$persnrB
+eval <- fused32$persnr == fused32$persnrB
 # choose smallest FALSE!
-table(eval)
+firstlevel32 <- table(eval)
 

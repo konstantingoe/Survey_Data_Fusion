@@ -197,5 +197,42 @@ to.dendrogram <- function(dfrep,rownum=1,height.increment=0.1){
   return(rval)
 }
 
+## function for multiple t-test
 
+pairedttest <- function(x,y){
+  test <- t.test(x,y, paired=F)
+  out <- data.frame(stat = test$statistic,
+                    df   = test$parameter,
+                    pval = test$p.value,
+                    conl = test$conf.int[1],
+                    conh = test$conf.int[2]
+  )
+  return(out)
+}
 
+corrtest <- function(x,y){
+  test <- cocor.indep.groups(x, y, 
+                     n1 = 4884, n2 =1465, data.name = c("soepcorr","fusedcorr"))
+  return(test)
+}
+
+####### Hot Deck Functions #####
+
+distancehd <- function(A=A,B=B, distfun = mahalanobis, algorithm = hungarian, nn=1){
+  match <- NND.hotdeck(data.rec=A, data.don=B,
+                       match.vars=X.mtc, 
+                       don.class = donclass,
+                       dist.fun = distfun,
+                       rank = TRUE,
+                       constrained = TRUE,
+                       constr.alg = algorithm,
+                       k=nn)
+  return(match)
+}
+
+fusing <- function(A=A,B=B, data=data){
+  fused <- create.fused(data.rec=A, data.don=B,
+                        mtc.ids=data$mtc.ids,
+                        z.vars=Z.vars)
+  return(fused)
+}
