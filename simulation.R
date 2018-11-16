@@ -14,21 +14,30 @@ vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass
 # (X,Z) onto the smaller data set A with (X,Y).
 # repeat this 10.000 times!
 
+#possibly divide script into part that is fix and part that relies on simulation:
+
+
 #### Sample Selection ####
 
 soep <- soep %>% 
   mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
-  mutate(sex = factor(sex, ordered = F))
+  mutate(sex = factor(sex, ordered = F)) %>% 
+  select(-gbja_cat, - pwgt) # not useful here for retired population
 
 # CIA assumption
 CItest <- ci.test(x = "income", y = "education", z = c("sex","gbja", "rente_2015_gesamt","expunempl", "unempben" ,"expwork" , "divorced"), data = soep)
+# does not hold!
 
+#create A and B
 
 soepA <- select(soep, -income)
 B <- select(soep, -education)
 
+# choose fractions corresponding to fraction of SOEP vs. VSKT 
+fraction <- nrow(soep) / nrow(vskt.mp) 
 set.seed(1234)
-A <- sample_frac(soepA, 0.3, replace = F)
+A <- sample_frac(soepA, fraction, replace = F)
+# having checked that for several draws the general structure for matching variable choice does not change
 
 A <- A %>% 
   mutate(a=1)
@@ -37,10 +46,6 @@ B <- B %>%
   mutate(a=0) %>% 
   mutate(persnrB = persnr)
 
-
-(X.vars <- intersect(names(A), names(B)))
-(Y.vars <- setdiff(names(A), names(B)))
-(Z.vars <- setdiff(names(B), names(A)))
 
 ##### Checking densities #####
 joint <- bind_rows(A, B)
@@ -87,7 +92,7 @@ varImpPlot(forestA,type=2)
 
 (VI_FA <- importance(forestA, type=2, scale = F))
 
-barplot(t(VI_FA/sum(VI_F)))
+barplot(t(VI_FA/sum(VI_FA)))
 
 #tree <- getTree(forestA,1,labelVar=TRUE)
 #d <- to.dendrogram(tree)
@@ -102,14 +107,20 @@ varImpPlot(forestB,type=2)
 
 (VI_FB <- importance(forestB, type=2, scale = F))
 
-barplot(t(VI_FB/sum(VI_F)))
+barplot(t(VI_FB/sum(VI_FB)))
 
 # divorced is discarded in both variable selection models
+# sex also has very low importance -> take both as don.classes 
 
 ##### Perform Matching ####
-
+# define necessary string values
+X.vars <- intersect(names(A), names(B))
+Y.vars <- setdiff(names(A), names(B))
+Z.vars <- setdiff(names(B), names(A))
 X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
 donclass <- c("sex", "divorced")
+xz.vars <- c(X.mtc, "income" )
+xyz.vars <- c(X.mtc, Y.vars, "income" )
 
 
 # Hellinger Distance for matching variable quality
@@ -120,6 +131,73 @@ dist <- sapply(as.list(X.mtc), function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,
 
 
 ##### simulation starts here ######
+
+# need function that draws random sample from soepA, 10.000 times and perforems all sorts of matching on each of those samples and stores them in a list
+
+# 3 repetitions:
+rep <- 3
+A_k <- as.list.data.frame(replicate(rep, sample_frac(soepA, fraction, replace = F), simplify = F))
+
+distfuns1 <- list("hungarian" = c("hungarian",1), "lpsolve" = c("lpSolve", 5))
+distfuns2 <- list("mahalanobis distance" = "Mahalanobis","minimax distance" ="minimax", "gower distance" = "Gower")
+distancematch <- lapply(distfuns1, function(y) 
+                    lapply(distfuns2, function(z) 
+                      lapply(A_k, function(x) distancehd(x,
+                             B, distfun = z, constr = y))))
+
+
+randommatch <-
+rankmatch <- 
+  
+simlist <- list("distancematch" = distancematch , "randommatch" = randommatch, "rankmatch" = rankmatch)  
+
+##### 4th level ######
+ksB <- select(B, one_of(xz.vars))
+
+
+
+# respecify this with each draw
+ksfused1 <- select(fused1, one_of(xz.vars))
+# only need one time specification <- drag up!!!!
+# respecify this with each draw
+kstest1 <- rbind(xz.vars,sapply(as.list(xz.vars), function(x) ks.test(ksfused1[,x], ksB[,x], alternative = "two.sided")$p.value))
+#rownames(kstest, do.NULL = TRUE, prefix = "row")
+#rownames(kstest) <- c("Variables","Kolmogorov-Smirnov p-value")
+#ommit bivariat test for now due to computational time
+#######3rd level:
+#### Correlation matrix approach #####
+#drag up
+xyz.vars <- c(X.mtc, Y.vars, "income" )
+#drag up
+soepcorr <- select(soep, one_of(xyz.vars))
+
+# respecify this with each draw
+fused1corr <- select(fused.1, one_of(xyz.vars))
+# drag up
+corrmatfull <- round(cor(soepcorr),2)
+# respecify this with each draw
+corrmatfused1 <- round(cor(fused1corr),2)
+
+corrtestmat1 <- matrix(NA, nrow=7, ncol=7)
+for (i in 1:nrow(corrtestmat1)) {
+  for (j in 1:ncol(corrtestmat1)) {
+    corrtestmat1[i,j] <- get.cocor.results(corrtest(corrmatfull[i,j],corrmatfused1[i,j]))$fisher1925$p.value
+  }
+}
+corrtestmat[upper.tri(corrtestmat, diag = T)] <- NA
+
+######2nd level:
+#specify once
+v <- factorsNumeric(select(soep, one_of(xyz.vars)))
+# respecify this with each draw
+w1 <- factorsNumeric(select(fused1, one_of(xyz.vars)))
+
+#takes a long long time!
+# but works great!
+xyztest1 <- cramer.test(as.matrix(v), as.matrix(w1))
+
+# done:
+# then aggregate and report thats it
 
 
 #nearest neigbor distance hot deck

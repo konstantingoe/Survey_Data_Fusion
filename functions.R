@@ -218,21 +218,17 @@ corrtest <- function(x,y){
 
 ####### Hot Deck Functions #####
 
-distancehd <- function(A=A,B=B, distfun = mahalanobis, algorithm = hungarian, nn=1){
+distancehd <- function(A=A,B=B, distfun = mahalanobis, constr = c(algorithm="hungarian", nn=1)){
   match <- NND.hotdeck(data.rec=A, data.don=B,
                        match.vars=X.mtc, 
                        don.class = donclass,
                        dist.fun = distfun,
                        rank = TRUE,
                        constrained = TRUE,
-                       constr.alg = algorithm,
-                       k=nn)
-  return(match)
-}
-
-fusing <- function(A=A,B=B, data=data){
+                       constr.alg = constr[1],
+                       k=constr[2])
   fused <- create.fused(data.rec=A, data.don=B,
-                        mtc.ids=data$mtc.ids,
+                        mtc.ids=match$mtc.ids,
                         z.vars=Z.vars)
   return(fused)
 }
