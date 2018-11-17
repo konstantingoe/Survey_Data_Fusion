@@ -22,6 +22,7 @@ vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass
 soep <- soep %>% 
   mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
+  mutate(divorced = factor(divorced, ordered = F)) %>% 
   select(-gbja_cat, - pwgt) # not useful here for retired population
 
 # CIA assumption
@@ -137,6 +138,7 @@ dist <- sapply(as.list(X.mtc), function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,
 # 3 repetitions:
 rep <- 3
 A_k <- as.list.data.frame(replicate(rep, sample_frac(soepA, fraction, replace = F), simplify = F))
+names(A_k) <- 1:rep
 
 distfuns1 <- list("hungarian" = c("hungarian",1), "lpsolve" = c("lpSolve", 5))
 distfuns2 <- list("mahalanobis distance" = "Mahalanobis","minimax distance" ="minimax", "gower distance" = "Gower")
@@ -145,15 +147,36 @@ distancematch <- lapply(distfuns1, function(y)
                       lapply(A_k, function(x) distancehd(x,
                              B, distfun = z, constr = y))))
 
+randomfuns1 <- list("cutdon.rot" = "rot", "cutdon.min" = "min")
+randomfuns2 <- list("mahalanobis distance" = "Mahalanobis","minimax distance" ="minimax", "gower distance" = "Gower", "ann distance" = "ANN")
+randommatch <- lapply(randomfuns1, function(y) 
+                lapply(randomfuns2, function(z) 
+                  lapply(A_k, function(x) randomhd(x,
+                    B, distfun = z, cutdon = y))))
 
-randommatch <-
-rankmatch <- 
-  
+rankvar <- "rente_2015_gesamt"  
+rankmatch <- lapply(distfuns1, function(y) 
+                lapply(A_k, function(x) rankhd(x,
+                  B, constr = y)))
+
+
 simlist <- list("distancematch" = distancematch , "randommatch" = randommatch, "rankmatch" = rankmatch)  
+
+save(simlist, file= "simulation_fused.RDA")
+
 
 ##### 4th level ######
 ksB <- select(B, one_of(xz.vars))
+xzlist <- list("pension" = xz.vars[1], "birthyear" = xz.vars[2], "unemplben" = xz.vars[3],
+               "workexp" = xz.vars[4], "unempexp" = xz.vars[5], "income" = xz.vars[6])
 
+ksfused <- lapply(seq_along(distfuns2), function(s,y) 
+            lapply(1:rep, function(r) 
+              lapply(xzlist, function(t) ks.test(select(simlist$distancematch$hungarian[[s]][[r]], one_of(xz.vars))[,t], ksB[,t], alternative = "two.sided")$p.value)))
+
+
+
+ks.test(simlist$distancematch$hungarian$`mahalanobis distance`[[1]]$expunempl, B$expunempl, alternative = "two.sided")
 
 
 # respecify this with each draw

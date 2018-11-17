@@ -217,13 +217,43 @@ corrtest <- function(x,y){
 }
 
 ####### Hot Deck Functions #####
-
+#distance hot deck
 distancehd <- function(A=A,B=B, distfun = mahalanobis, constr = c(algorithm="hungarian", nn=1)){
   match <- NND.hotdeck(data.rec=A, data.don=B,
                        match.vars=X.mtc, 
                        don.class = donclass,
                        dist.fun = distfun,
                        rank = TRUE,
+                       constrained = TRUE,
+                       constr.alg = constr[1],
+                       k=constr[2])
+  fused <- create.fused(data.rec=A, data.don=B,
+                        mtc.ids=match$mtc.ids,
+                        z.vars=Z.vars)
+  return(fused)
+}
+
+#random hotdeck
+randomhd <- function(A=A,B=B, distfun = mahalanobis, cutdon = "rot" ){
+  match <- RANDwNND.hotdeck(data.rec=A, data.don=B,
+                       match.vars=X.mtc, 
+                       don.class = donclass,
+                       dist.fun = distfun,
+                       cut.don = cutdon
+                       )
+  fused <- create.fused(data.rec=A, data.don=B,
+                        mtc.ids=match$mtc.ids,
+                        z.vars=Z.vars)
+  return(fused)
+}
+
+
+#rank hotdeck
+rankhd <- function(A=A,B=B, constr = c(algorithm="hungarian", nn=1)){
+  match <- NND.hotdeck(data.rec=A, data.don=B,
+                       match.vars=X.mtc, 
+                       don.class = donclass,
+                       var.rec = rankvar,
                        constrained = TRUE,
                        constr.alg = constr[1],
                        k=constr[2])
