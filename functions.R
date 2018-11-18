@@ -219,7 +219,7 @@ corrtest <- function(x,y){
 ####### Hot Deck Functions #####
 #distance hot deck
 distancehd <- function(A=A,B=B, distfun = mahalanobis, constr = c(algorithm="hungarian", nn=1)){
-  match <- NND.hotdeck(data.rec=A, data.don=B,
+  match1 <- NND.hotdeck(data.rec=A, data.don=B,
                        match.vars=X.mtc, 
                        don.class = donclass,
                        dist.fun = distfun,
@@ -227,38 +227,77 @@ distancehd <- function(A=A,B=B, distfun = mahalanobis, constr = c(algorithm="hun
                        constrained = TRUE,
                        constr.alg = constr[1],
                        k=constr[2])
-  fused <- create.fused(data.rec=A, data.don=B,
-                        mtc.ids=match$mtc.ids,
+  fused1 <- create.fused(data.rec=A, data.don=B,
+                        mtc.ids=match1$mtc.ids,
                         z.vars=Z.vars)
-  return(fused)
+  return(fused1)
 }
 
 #random hotdeck
 randomhd <- function(A=A,B=B, distfun = mahalanobis, cutdon = "rot" ){
-  match <- RANDwNND.hotdeck(data.rec=A, data.don=B,
+  match2 <- RANDwNND.hotdeck(data.rec=A, data.don=B,
                        match.vars=X.mtc, 
                        don.class = donclass,
                        dist.fun = distfun,
                        cut.don = cutdon
                        )
-  fused <- create.fused(data.rec=A, data.don=B,
-                        mtc.ids=match$mtc.ids,
+  fused2 <- create.fused(data.rec=A, data.don=B,
+                        mtc.ids=match2$mtc.ids,
                         z.vars=Z.vars)
-  return(fused)
+  return(fused2)
 }
 
 
 #rank hotdeck
 rankhd <- function(A=A,B=B, constr = c(algorithm="hungarian", nn=1)){
-  match <- NND.hotdeck(data.rec=A, data.don=B,
+  match3 <- NND.hotdeck(data.rec=A, data.don=B,
                        match.vars=X.mtc, 
                        don.class = donclass,
                        var.rec = rankvar,
                        constrained = TRUE,
                        constr.alg = constr[1],
                        k=constr[2])
-  fused <- create.fused(data.rec=A, data.don=B,
-                        mtc.ids=match$mtc.ids,
+  fused3 <- create.fused(data.rec=A, data.don=B,
+                        mtc.ids=match3$mtc.ids,
                         z.vars=Z.vars)
-  return(fused)
+  return(fused3)
 }
+
+
+# 3rd level: correlation matrix difference test
+
+corrtestmat <- function(matrixA, matrixB){ 
+    testmat <- matrix(NA, nrow=7, ncol=7)
+        for (i in 1:nrow(testmat)) {
+          for (j in 1:ncol(testmat)) {
+            testmat[i,j] <- get.cocor.results(corrtest(matrixA[i,j],matrixB[i,j]))$fisher1925$p.value
+          }
+        }
+      testmat[upper.tri(testmat, diag = T)] <- NA
+    row.names(testmat) <- colnames(testmat) <- xyz.vars
+  return(testmat)
+}
+
+
+# 2nd level: multivariate distribution test
+
+mvartest <- function(A=A, B=B){
+  mvtest <- cramer.test(as.matrix(factorsNumeric(select(A, one_of(xyz.vars)))), 
+                        as.matrix(factorsNumeric(select(B, one_of(xyz.vars)))))
+}
+
+# Summary statistics function
+
+simSumm <- function(repetitions = repetitions, data = data){ 
+  summ <- lapply(select(data, -repetitions), 
+                 function(x) rbind( mean = mean(x),
+                                     sd = sd(x),
+                                     median = median(x),
+                                     minimum = min(x),
+                                     maximum = max(x),
+                                     s.size = length(x)))
+  return(data.frame(summ))
+}
+
+
+

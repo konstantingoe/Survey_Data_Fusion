@@ -54,8 +54,8 @@ joint <- joint %>%
   mutate(a = factor(a, ordered = F))
 
 
-(birthplot <- mydensplot.sim(joint, "gbja", xname = "Geburtskohorte"))
-(kstest.gbja <- ks.test(A$gbja, B$gbja, alternative = "two.sided"))
+#(birthplot <- mydensplot.sim(joint, "gbja", xname = "Geburtskohorte"))
+#(kstest.gbja <- ks.test(A$gbja, B$gbja, alternative = "two.sided"))
 #works perfectly cannot reject H0 that both come from the same distribution
 
 # At this stage, since the population equality assumption is not a problem 
@@ -170,82 +170,98 @@ ksB <- select(B, one_of(xz.vars))
 xzlist <- list("pension" = xz.vars[1], "birthyear" = xz.vars[2], "unemplben" = xz.vars[3],
                "workexp" = xz.vars[4], "unempexp" = xz.vars[5], "income" = xz.vars[6])
 
-ksfused <- lapply(seq_along(distfuns2), function(s,y) 
-            lapply(1:rep, function(r) 
-              lapply(xzlist, function(t) ks.test(select(simlist$distancematch$hungarian[[s]][[r]], one_of(xz.vars))[,t], ksB[,t], alternative = "two.sided")$p.value)))
+ksfuseddist <- setNames(lapply(seq_along(distfuns1), function(w)
+            setNames(lapply(seq_along(distfuns2), function(s) 
+              setNames(lapply(1:rep, function(r) 
+                lapply(xzlist, function(t) ks.test(select(
+                  simlist$distancematch[[w]][[s]][[r]], one_of(xz.vars))[,t], ksB[,t], 
+                    alternative = "two.sided")$p.value)),
+                      names(A_k))),names(distfuns2))),names(distfuns1))
+
+ksfusedrandom <- setNames(lapply(seq_along(randomfuns1), function(w)
+                  setNames(lapply(seq_along(randomfuns2), function(s) 
+                    setNames(lapply(1:rep, function(r) 
+                      lapply(xzlist, function(t) ks.test(select(
+                        simlist$randommatch[[w]][[s]][[r]], one_of(xz.vars))[,t], ksB[,t], 
+                          alternative = "two.sided")$p.value)),
+                            names(A_k))),names(randomfuns2))),names(randomfuns1))
+
+ksfusedrank <- setNames(lapply(seq_along(distfuns1), function(w)
+                  setNames(lapply(1:rep, function(r) 
+                    lapply(xzlist, function(t) ks.test(select(
+                      simlist$rankmatch[[w]][[r]], one_of(xz.vars))[,t], ksB[,t], 
+                        alternative = "two.sided")$p.value)),
+                          names(A_k))),names(distfuns1))
+
+kslist <- list("distanceks" = ksfuseddist , "randomks" = ksfusedrandom, "rankks" = ksfusedrank)  
+
+ksdf <- setNames(lapply(seq_along(distfuns1), function(w)
+          setNames(lapply(seq_along(distfuns2), function(z) 
+            ldply(kslist$distanceks[[w]][[z]], data.frame, .id = "repetitions")), names(distfuns2))),names(distfuns1))
+
+summarystat <- simSumm(data=df)
+
+### figure out whats going wrong 
+summ <- data.frame(lapply(select(ksdf$hungarian$`mahalanobis distance`, -repetitions), 
+                 function(x) rbind(mean = mean(x))))
+
+#### find way of displaying mean and variance of each of the ks values
 
 
-
-ks.test(simlist$distancematch$hungarian$`mahalanobis distance`[[1]]$expunempl, B$expunempl, alternative = "two.sided")
-
-
-# respecify this with each draw
-ksfused1 <- select(fused1, one_of(xz.vars))
-# only need one time specification <- drag up!!!!
-# respecify this with each draw
-kstest1 <- rbind(xz.vars,sapply(as.list(xz.vars), function(x) ks.test(ksfused1[,x], ksB[,x], alternative = "two.sided")$p.value))
-#rownames(kstest, do.NULL = TRUE, prefix = "row")
-#rownames(kstest) <- c("Variables","Kolmogorov-Smirnov p-value")
-#ommit bivariat test for now due to computational time
 #######3rd level:
-#### Correlation matrix approach #####
-#drag up
+#### Correlation matrix #####
+
 xyz.vars <- c(X.mtc, Y.vars, "income" )
-#drag up
-soepcorr <- select(soep, one_of(xyz.vars))
+corrmatfull <- cor(select(soep, one_of(xyz.vars)))
 
-# respecify this with each draw
-fused1corr <- select(fused.1, one_of(xyz.vars))
-# drag up
-corrmatfull <- round(cor(soepcorr),2)
-# respecify this with each draw
-corrmatfused1 <- round(cor(fused1corr),2)
+correlationsimdistance <- setNames(lapply(seq_along(distfuns1), function(g) 
+                            setNames(lapply(seq_along(distfuns2), function(s)
+                              setNames(lapply(1:rep, function(z) corrtestmat(
+                                corrmatfull, cor(select(simlist$distancematch[[g]][[s]][[z]], 
+                                  one_of(xyz.vars))))),names(A_k))),names(distfuns2))), names(distfuns1))
 
-corrtestmat1 <- matrix(NA, nrow=7, ncol=7)
-for (i in 1:nrow(corrtestmat1)) {
-  for (j in 1:ncol(corrtestmat1)) {
-    corrtestmat1[i,j] <- get.cocor.results(corrtest(corrmatfull[i,j],corrmatfused1[i,j]))$fisher1925$p.value
-  }
-}
-corrtestmat[upper.tri(corrtestmat, diag = T)] <- NA
+correlationsimrandom <- setNames(lapply(seq_along(randomfuns1), function(g) 
+                          setNames(lapply(seq_along(randomfuns2), function(s)
+                            setNames(lapply(1:rep, function(z) corrtestmat(
+                              corrmatfull, cor(select(simlist$randommatch[[g]][[s]][[z]], 
+                                one_of(xyz.vars))))),names(A_k))),names(randomfuns2))), names(randomfuns1))
+
+correlationsimrank <- setNames(lapply(seq_along(distfuns1), function(g) 
+                        setNames(lapply(1:rep, function(z) corrtestmat(
+                          corrmatfull, cor(select(simlist$rankmatch[[g]][[z]], 
+                            one_of(xyz.vars))))),names(A_k))), names(distfuns1))
+                    
+correlationlist <- list("distancecorr" = correlationsimdistance , "randomcorr" = correlationsimrandom, "rankcorr" = correlationsimrank)  
+
+#also here find a way to aggregate and present
 
 ######2nd level:
-#specify once
-v <- factorsNumeric(select(soep, one_of(xyz.vars)))
-# respecify this with each draw
-w1 <- factorsNumeric(select(fused1, one_of(xyz.vars)))
 
 #takes a long long time!
 # but works great!
-xyztest1 <- cramer.test(as.matrix(v), as.matrix(w1))
+
+xyztestdist <- setNames(lapply(seq_along(distfuns1), function(g) 
+            setNames(lapply(seq_along(distfuns2), function(s)
+              setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+                B=simlist$distancematch[[g]][[s]][[z]])$p.value),
+                  names(A_k))),names(distfuns2))), names(distfuns1))
+
+xyztestrand <- setNames(lapply(seq_along(randomfuns1), function(g) 
+            setNames(lapply(seq_along(randomfuns2), function(s)
+              setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+                B=simlist$randommatch[[g]][[s]][[z]])$p.value),
+                  names(A_k))),names(randomfuns2))), names(randomfuns1))
+
+xyztestrank <- setNames(lapply(seq_along(distfuns1), function(g) 
+                setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+                  B=simlist$rankmatch[[g]][[z]])$p.value),
+                    names(A_k))), names(distfuns1))
+
+
+xyztestlist <- list("distancxyz" = xyztestdist , "randomxyz" = xyztestrand, "rankxyz" = xyztestrank)  
 
 # done:
 # then aggregate and report thats it
-
-
-#nearest neigbor distance hot deck
-
-#Distance functions that theoretically apply: Mahalanobis, minimax, and Gower
-#Obviously it does not 
-
-match1 <- distancehd(A, B, distfun = "minimax", algorithm = "lpSolve", nn=5)
-match2 <- distancehd(A, B, distfun = "Mahalanobis", algorithm = "lpSolve", nn=5)
-match3 <- distancehd(A, B, distfun = "Gower", algorithm = "lpSolve", nn=5)
-
-match12 <- distancehd(A, B, distfun = "minimax", algorithm = "hungarian", nn=1)
-match22 <- distancehd(A, B, distfun = "Mahalanobis", algorithm = "hungarian", nn=1)
-match32 <- distancehd(A, B, distfun = "Gower", algorithm = "hungarian", nn=1)
-
-fused1 <- fusing(A,B, data=match1)
-fused2 <- fusing(A,B, data=match2)
-fused3 <- fusing(A,B, data=match3)
-
-fused12 <- fusing(A,B, data=match12)
-fused22 <- fusing(A,B, data=match22)
-fused32 <- fusing(A,B, data=match32)
-
-summary(match.1$dist.rd)
-# distances are zero
 
 fused.1 <- fused.1 %>% 
   mutate(b=0)

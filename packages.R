@@ -20,6 +20,7 @@ pacman::p_load(
   plyr,
   plm,
   pglm,
+  MonteCarlo,
   readstata13,
   readxl,
   rlang,
