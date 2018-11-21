@@ -136,29 +136,21 @@ dist <- sapply(as.list(X.mtc), function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,
 # need function that draws random sample from soepA, 10.000 times and perforems all sorts of matching on each of those samples and stores them in a list
 
 # 3 repetitions:
-rep <- 3
+rep <- 5
 A_k <- as.list.data.frame(replicate(rep, sample_frac(soepA, fraction, replace = F), simplify = F))
 names(A_k) <- 1:rep
 
 distfuns1 <- list("hungarian" = c("hungarian",1), "lpsolve" = c("lpSolve", 5))
 distfuns2 <- list("mahalanobis distance" = "Mahalanobis","minimax distance" ="minimax", "gower distance" = "Gower")
-distancematch <- lapply(distfuns1, function(y) 
-                    lapply(distfuns2, function(z) 
-                      lapply(A_k, function(x) distancehd(x,
-                             B, distfun = z, constr = y))))
-
 randomfuns1 <- list("cutdon.rot" = "rot", "cutdon.min" = "min")
 randomfuns2 <- list("mahalanobis distance" = "Mahalanobis","minimax distance" ="minimax", "gower distance" = "Gower", "ann distance" = "ANN")
-randommatch <- lapply(randomfuns1, function(y) 
-                lapply(randomfuns2, function(z) 
-                  lapply(A_k, function(x) randomhd(x,
-                    B, distfun = z, cutdon = y))))
-
 rankvar <- "rente_2015_gesamt"  
-rankmatch <- lapply(distfuns1, function(y) 
-                lapply(A_k, function(x) rankhd(x,
-                  B, constr = y)))
 
+distancematch <- montecarlofunc(routine = "distance",list1 = distfuns1, list2 = distfuns2, FUN = distancehd)
+
+randommatch <- montecarlofunc(routine = "random", list1=randomfuns1, list2=randomfuns2, FUN = randomhd)
+
+rankmatch <- montecarlofunc(routine = "rank", list1 = distfuns1, FUN = rankhd)
 
 simlist <- list("distancematch" = distancematch , "randommatch" = randommatch, "rankmatch" = rankmatch)  
 
@@ -170,42 +162,32 @@ ksB <- select(B, one_of(xz.vars))
 xzlist <- list("pension" = xz.vars[1], "birthyear" = xz.vars[2], "unemplben" = xz.vars[3],
                "workexp" = xz.vars[4], "unempexp" = xz.vars[5], "income" = xz.vars[6])
 
-ksfuseddist <- setNames(lapply(seq_along(distfuns1), function(w)
-            setNames(lapply(seq_along(distfuns2), function(s) 
-              setNames(lapply(1:rep, function(r) 
-                lapply(xzlist, function(t) ks.test(select(
-                  simlist$distancematch[[w]][[s]][[r]], one_of(xz.vars))[,t], ksB[,t], 
-                    alternative = "two.sided")$p.value)),
-                      names(A_k))),names(distfuns2))),names(distfuns1))
+# for distance just use out = "statistic" which is the ks.distance!
+# and compare actual fit via kolmogorov-smirnov distance
 
-ksfusedrandom <- setNames(lapply(seq_along(randomfuns1), function(w)
-                  setNames(lapply(seq_along(randomfuns2), function(s) 
-                    setNames(lapply(1:rep, function(r) 
-                      lapply(xzlist, function(t) ks.test(select(
-                        simlist$randommatch[[w]][[s]][[r]], one_of(xz.vars))[,t], ksB[,t], 
-                          alternative = "two.sided")$p.value)),
-                            names(A_k))),names(randomfuns2))),names(randomfuns1))
-
-ksfusedrank <- setNames(lapply(seq_along(distfuns1), function(w)
-                  setNames(lapply(1:rep, function(r) 
-                    lapply(xzlist, function(t) ks.test(select(
-                      simlist$rankmatch[[w]][[r]], one_of(xz.vars))[,t], ksB[,t], 
-                        alternative = "two.sided")$p.value)),
-                          names(A_k))),names(distfuns1))
+ksfuseddist <- KS.match(routine = "distance", list1 = distfuns1, list2 = distfuns2, out = "statistic")
+ksfusedrandom <- KS.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2, out = "statistic")
+ksfusedrank <- KS.match(routine = "rank", list1 = distfuns1, out = "statistic")
 
 kslist <- list("distanceks" = ksfuseddist , "randomks" = ksfusedrandom, "rankks" = ksfusedrank)  
 
-ksdf <- setNames(lapply(seq_along(distfuns1), function(w)
-          setNames(lapply(seq_along(distfuns2), function(z) 
-            ldply(kslist$distanceks[[w]][[z]], data.frame, .id = "repetitions")), names(distfuns2))),names(distfuns1))
+summdist <- ksaggregate(routine = "distance",list1 = distfuns1, list2 = distfuns2)
+summrand <- ksaggregate(routine = "random",list1 = randomfuns1, list2 = randomfuns2)
+summrank <- ksaggregate(routine = "rank",list1 = distfuns1)
 
-summarystat <- simSumm(data=df)
+fullks <- rbind("summdist" = summdist, "summrand" = summrand, "summrank" = summrank)
+routiname <-  c("hungarian mahalanobis distance mean", "hungarian minimax distance mean", "hungarian gower distance mean", 
+                "lpSolve mahalanobis distance mean", "lpSolve minimax distance mean", "lpSolve gower distance mean",
+                "cutrot mahalanobis random mean", "cutrot minimax random mean", "cutrot gower random mean", "cutrot ann random mean",
+                "cutmin mahalanobis random mean", "cutmin minimax random mean", "cutmin gower random mean", "cutmin ann random mean",
+                "hungarian rank mean", "lpSolve rank mean")
+rownames(fullks) <- routiname
+fullksmat <- t(fullks)
+xtable(fullksmat, caption = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for several matching routines",
+                          digits = 3, auto = T)
 
-### figure out whats going wrong 
-summ <- data.frame(lapply(select(ksdf$hungarian$`mahalanobis distance`, -repetitions), 
-                 function(x) rbind(mean = mean(x))))
+# find the number of rejected null hypotheses 
 
-#### find way of displaying mean and variance of each of the ks values
 
 
 #######3rd level:
@@ -214,24 +196,27 @@ summ <- data.frame(lapply(select(ksdf$hungarian$`mahalanobis distance`, -repetit
 xyz.vars <- c(X.mtc, Y.vars, "income" )
 corrmatfull <- cor(select(soep, one_of(xyz.vars)))
 
-correlationsimdistance <- setNames(lapply(seq_along(distfuns1), function(g) 
-                            setNames(lapply(seq_along(distfuns2), function(s)
-                              setNames(lapply(1:rep, function(z) corrtestmat(
-                                corrmatfull, cor(select(simlist$distancematch[[g]][[s]][[z]], 
-                                  one_of(xyz.vars))))),names(A_k))),names(distfuns2))), names(distfuns1))
 
-correlationsimrandom <- setNames(lapply(seq_along(randomfuns1), function(g) 
-                          setNames(lapply(seq_along(randomfuns2), function(s)
-                            setNames(lapply(1:rep, function(z) corrtestmat(
-                              corrmatfull, cor(select(simlist$randommatch[[g]][[s]][[z]], 
-                                one_of(xyz.vars))))),names(A_k))),names(randomfuns2))), names(randomfuns1))
-
-correlationsimrank <- setNames(lapply(seq_along(distfuns1), function(g) 
-                        setNames(lapply(1:rep, function(z) corrtestmat(
-                          corrmatfull, cor(select(simlist$rankmatch[[g]][[z]], 
-                            one_of(xyz.vars))))),names(A_k))), names(distfuns1))
+correlationsimdistance <- corr.match(routine = "distance", list1 = distfuns1, list2 = distfuns2)
+correlationsimrandom <- corr.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
+correlationsimrank <- corr.match(routine = "rank", list1 = distfuns1)
                     
 correlationlist <- list("distancecorr" = correlationsimdistance , "randomcorr" = correlationsimrandom, "rankcorr" = correlationsimrank)  
+
+corredist <- montecarlocorr(routine = "distance", list1 = distfuns1, list2 = distfuns2)
+correrandom <- montecarlocorr(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
+correrank <- montecarlocorr(routine = "rank", list1 = distfuns1)
+
+corrlist <- list("distancecorr" = corredist , "randomcorr" = correrandom, "rankcorr" = correrank) 
+
+distcorrmean <- corraggregate(routine = "distance", list1 = distfuns1, list2 = distfuns2)
+randomcorrmean <- corraggregate(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
+rankcorrmean <- corraggregate(routine = "rank", list1 = distfuns1)
+
+fullcorr <- rbind("distcorrmean" = distcorrmean, "randomcorrmean" = randomcorrmean, "rankcorrmean" = rankcorrmean)
+rownames(fullcorr) <- routiname
+
+fullcorrchoice <- t(select(fullcorr, contains("income")))
 
 #also here find a way to aggregate and present
 

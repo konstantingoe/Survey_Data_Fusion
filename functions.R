@@ -292,11 +292,195 @@ simSumm <- function(repetitions = repetitions, data = data){
   summ <- lapply(select(data, -repetitions), 
                  function(x) rbind( mean = mean(x),
                                      sd = sd(x),
-                                     median = median(x),
+                                     var = var(x),
                                      minimum = min(x),
                                      maximum = max(x),
                                      s.size = length(x)))
   return(data.frame(summ))
+}
+
+simSumm2 <- function(repetitions = repetitions, data = data){ 
+  summ <- lapply(select(data, -repetitions), 
+                 function(x) rbind( mean = mean(x)))
+  return(data.frame(summ))
+}
+
+simSumm3 <- function(data = data){ 
+  summ <- lapply(data, 
+                 function(x) rbind( mean = mean(x)))
+  return(data.frame(summ))
+}
+
+nullToNA <- function(x) {
+  x[sapply(x, is.null)] <- NA
+  return(x)
+}
+
+#Matching and fusing monte carlo function
+# for routine add "distance", "random" or "rank", for list the nesting indicators 
+# and for FUN the user written matching and fusing functions
+
+montecarlofunc <- function(routine = routine, list1 = list1, list2 =NULL, FUN=FUN) {
+  if (routine == "distance"){
+    lapply(list1, function(y) 
+      lapply(list2, function(z) 
+        lapply(A_k, function(x) FUN(x,
+                                    B, distfun = z, constr = y))))
+  }else if (routine == "random"){
+    lapply(list1, function(y) 
+      lapply(list2, function(z) 
+        lapply(A_k, function(x) FUN(x,
+                                    B, distfun = z, cutdon = y))))
+    
+  }else if (routine == "rank"){
+    lapply(list1, function(y) 
+      lapply(A_k, function(x) FUN(x,
+                                  B, constr = y)))
+  }
+  
+}
+
+
+#### 4th level KS.function
+
+KS.match <- function(routine = routine ,list1 = list1, list2 = NULL, out = out){
+  if (routine == "distance"){
+      setNames(lapply(seq_along(list1), function(w)
+        setNames(lapply(seq_along(list2), function(s) 
+          setNames(lapply(1:rep, function(r) 
+            lapply(xzlist, function(t) ks.test(select(
+              simlist$distancematch[[w]][[s]][[r]], one_of(xz.vars))[,t], ksB[,t], 
+                alternative = "two.sided")[[out]])),
+                  names(A_k))),names(list2))),names(list1))
+    }else if (routine == "random"){
+      setNames(lapply(seq_along(list1), function(w)
+        setNames(lapply(seq_along(list2), function(s) 
+          setNames(lapply(1:rep, function(r) 
+            lapply(xzlist, function(t) ks.test(select(
+              simlist$randommatch[[w]][[s]][[r]], one_of(xz.vars))[,t], ksB[,t], 
+                alternative = "two.sided")[[out]])),
+                 names(A_k))),names(list2))),names(list1))
+    }else if (routine == "rank"){
+      setNames(lapply(seq_along(list1), function(w)
+        setNames(lapply(1:rep, function(r) 
+          lapply(xzlist, function(t) ks.test(select(
+            simlist$rankmatch[[w]][[r]], one_of(xz.vars))[,t], ksB[,t], 
+              alternative = "two.sided")[[out]])),
+                names(A_k))),names(list1))
+    }
+}
+
+
+# KS aggregate function
+
+ksaggregate <- function(routine = routine, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+    df <- setNames(lapply(seq_along(list1), function(w)
+          setNames(lapply(seq_along(list2), function(z) 
+            ldply(kslist$distanceks[[w]][[z]], data.frame, .id = "repetitions")), names(list2))),names(list1))
+        
+        stat <- setNames(lapply(seq_along(list1), function(s) 
+          setNames(lapply(seq_along(list2), function(t) 
+            simSumm2(data=df[[s]][[t]])), names(list2))), names(list1))
+        return(do.call("rbind",(do.call("rbind", stat))))
+  }else if (routine == "random"){
+    df <- setNames(lapply(seq_along(list1), function(w)
+      setNames(lapply(seq_along(list2), function(z) 
+        ldply(kslist$randomks[[w]][[z]], data.frame, .id = "repetitions")), names(list2))),names(list1))
+    
+    stat <- setNames(lapply(seq_along(list1), function(s) 
+      setNames(lapply(seq_along(list2), function(t) 
+        simSumm2(data=df[[s]][[t]])), names(list2))), names(list1))
+    return(do.call("rbind",(do.call("rbind", stat))))
+  }else if (routine == "rank"){
+    df <- setNames(lapply(seq_along(list1), function(w)
+         ldply(kslist$rankks[[w]], data.frame, .id = "repetitions")),names(list1))
+     
+     stat <- setNames(lapply(seq_along(list1), function(s) 
+         simSumm2(data=df[[s]])), names(list1)) 
+     return(do.call("rbind", stat))
+  }
+}
+
+
+##### 3rd level: Correlation
+
+corr.match <- function(routine = routine, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+        corr <- setNames(lapply(seq_along(list1), function(g) 
+          setNames(lapply(seq_along(list2), function(s)
+            setNames(lapply(1:rep, function(z) corrtestmat(
+              corrmatfull, cor(select(simlist$distancematch[[g]][[s]][[z]], 
+                one_of(xyz.vars))))),names(A_k))),names(list2))), names(list1))
+        return(corr)
+      
+  }else if (routine == "random"){
+         corr <- setNames(lapply(seq_along(list1), function(g) 
+          setNames(lapply(seq_along(list2), function(s)
+            setNames(lapply(1:rep, function(z) corrtestmat(
+              corrmatfull, cor(select(simlist$randommatch[[g]][[s]][[z]], 
+                one_of(xyz.vars))))),names(A_k))),names(list2))), names(list1))
+    return(corr)
+  }else if (routine == "rank"){
+          corr <- setNames(lapply(seq_along(list1), function(g) 
+              setNames(lapply(1:rep, function(z) corrtestmat(
+                corrmatfull, cor(select(simlist$rankmatch[[g]][[z]], 
+                  one_of(xyz.vars))))),names(A_k))), names(list1)) 
+    
+  }
+}  
+
+
+
+correshape <- function(data=data){
+  data$rows <- rownames(data)
+  df <- filter(melt(data),!is.na(value))
+  df <- df %>% 
+    mutate(corr = paste(df$rows, "vs", df$variable))
+  c <- as.data.frame(t(df$value))
+  names(c) <- df$corr
+  return(c)
+}
+
+montecarlocorr <- function(routine = routine, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+     df <-  setNames(lapply(seq_along(list1), function(z)
+              setNames(lapply(seq_along(list2), function(y)
+               ldply(lapply(1:rep, function(x) correshape(
+                data=as.data.frame(correlationlist$distancecorr[[z]][[y]][[x]]))))), names(list2))), names(list1))
+     return(df)
+     
+  }else if (routine == "random"){
+    df <-  setNames(lapply(seq_along(list1), function(z)
+            setNames(lapply(seq_along(list2), function(y)
+              ldply(lapply(1:rep, function(x) correshape(
+                data=as.data.frame(correlationlist$randomcorr[[z]][[y]][[x]]))))), names(list2))), names(list1))
+    return(df)
+    
+  }else if (routine == "rank"){
+    df <-  setNames(lapply(seq_along(list1), function(z)
+             ldply(lapply(1:rep, function(x) correshape(
+              data=as.data.frame(correlationlist$rankcorr[[z]][[x]]))))), names(list1))
+    return(df)
+  }
+}
+
+corraggregate <- function(routine = routine, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+    stat <- setNames(lapply(seq_along(list1), function(s) 
+      setNames(lapply(seq_along(list2), function(t) 
+        simSumm3(data=corrlist$distancecorr[[s]][[t]])), names(list2))), names(list1))
+    return(do.call("rbind",(do.call("rbind", stat))))
+  }else if (routine == "random"){
+       stat <- setNames(lapply(seq_along(list1), function(s) 
+      setNames(lapply(seq_along(list2), function(t) 
+        simSumm3(data=corrlist$randomcorr[[s]][[t]])), names(list2))), names(list1))
+    return(do.call("rbind",(do.call("rbind", stat))))
+  }else if (routine == "rank"){
+        stat <- setNames(lapply(seq_along(list1), function(s) 
+      simSumm3(data=corrlist$rankcorr[[s]])), names(list1)) 
+    return(do.call("rbind", stat))
+  }
 }
 
 
