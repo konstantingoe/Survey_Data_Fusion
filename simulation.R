@@ -186,6 +186,8 @@ fullksmat <- t(fullks)
 xtable(fullksmat, caption = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for several matching routines",
                           digits = 3, auto = T)
 
+stargazer(fullksmat, summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for several matching routines",
+                      out = "ks.tex", colnames = T, digits = 4, flip = F, initial.zero = T, multicolumn = T, rownames =T)
 # find the number of rejected null hypotheses 
 
 
