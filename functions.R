@@ -420,13 +420,13 @@ corr.match <- function(routine = routine, list1 = list1, list2 = NULL){
             setNames(lapply(1:rep, function(z) corrtestmat(
               corrmatfull, cor(select(simlist$randommatch[[g]][[s]][[z]], 
                 one_of(xyz.vars))))),names(A_k))),names(list2))), names(list1))
-    return(corr)
+      return(corr)
   }else if (routine == "rank"){
           corr <- setNames(lapply(seq_along(list1), function(g) 
               setNames(lapply(1:rep, function(z) corrtestmat(
                 corrmatfull, cor(select(simlist$rankmatch[[g]][[z]], 
                   one_of(xyz.vars))))),names(A_k))), names(list1)) 
-    
+      return(corr)
   }
 }  
 
@@ -484,4 +484,35 @@ corraggregate <- function(routine = routine, list1 = list1, list2 = NULL){
 }
 
 
+###### Level 2: Preserving the distribution #####
 
+
+xyztestdist <- setNames(lapply(seq_along(distfuns1), function(g) 
+  setNames(lapply(seq_along(distfuns2), function(s)
+    setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+       B=simlist$distancematch[[g]][[s]][[z]])$p.value),
+         names(A_k))),names(distfuns2))), names(distfuns1))
+
+
+xyz.match <- function(routine = routine, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+    xyz <- setNames(lapply(seq_along(list1), function(g) 
+      setNames(lapply(seq_along(list2), function(s)
+        setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+          B=simlist$distancematch[[g]][[s]][[z]]$p.value)),names(A_k))),names(list2))), names(list1))
+    return(xyz)
+    
+  }else if (routine == "random"){
+    xyz <- setNames(lapply(seq_along(list1), function(g) 
+      setNames(lapply(seq_along(list2), function(s)
+        setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+          B=simlist$randommatch[[g]][[s]][[z]]$p.value)),names(A_k))),names(list2))), names(list1))
+    return(xyz)
+  }else if (routine == "rank"){
+    xyz <- setNames(lapply(seq_along(distfuns1), function(g) 
+        setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+            B=simlist$rankmatch[[g]][[z]])$p.value),
+                 names(A_k))), names(distfuns1))
+    return(xyz)
+  }
+}  

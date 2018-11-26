@@ -5,6 +5,9 @@ source("packages.R")
 source("functions.R")
 source(".path.R")
 
+set.seed(1234)
+
+
 soep <- import(paste(path, "soep_passive_ges.dta" , sep = "/"), setclass = "data.table")
 vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass = "data.table")
 
@@ -26,19 +29,13 @@ soep <- soep %>%
   select(-gbja_cat, - pwgt) # not useful here for retired population
 
 # CIA assumption
-CItest <- ci.test(x = "income", y = "education", z = c("sex","gbja", "rente_2015_gesamt","expunempl", "unempben" ,"expwork" , "divorced"), data = soep)
+CItest <- ci.test(x = "income", y = "education", z = c("sex","gbja", "rente_2015_gesamt","expunempl", "unempben" ,"expwork" , "divorced"), data = soep, test = "mi-cg")
 # does not hold!
 
 #create A and B
 
-soepA <- select(soep, -income)
+A <- select(soep, -income)
 B <- select(soep, -education)
-
-# choose fractions corresponding to fraction of SOEP vs. VSKT 
-fraction <- nrow(soep) / nrow(vskt.mp) 
-set.seed(1234)
-A <- sample_frac(soepA, fraction, replace = F)
-# having checked that for several draws the general structure for matching variable choice does not change
 
 A <- A %>% 
   mutate(a=1)
@@ -87,9 +84,11 @@ eta.fcn(step.glm.modelB)
 ##### Fitting Random forest #####
 
 #for A
+forestA <- randomForest(factor(education, ordered = T) ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = A, importance = T, corr.bias = T)
 
-forestA <- randomForest(education ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = A)
-varImpPlot(forestA,type=2)
+pdf('forestA.pdf',height=4, width=6)
+varImpPlot(forestA,type=2, main = "")
+dev.off()
 
 (VI_FA <- importance(forestA, type=2, scale = F))
 
@@ -102,9 +101,12 @@ barplot(t(VI_FA/sum(VI_FA)))
 
 #for B
 
+forestB <- randomForest(income ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = B,importance = T, corr.bias = T)
+pdf('forestB.pdf',height=4, width=6)
+varImpPlot(forestB,type=2, main = "")
+dev.off()
 
-forestB <- randomForest(income ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = B)
-varImpPlot(forestB,type=2)
+sort(imp, decreasing = T) 
 
 (VI_FB <- importance(forestB, type=2, scale = F))
 
@@ -112,6 +114,12 @@ barplot(t(VI_FB/sum(VI_FB)))
 
 # divorced is discarded in both variable selection models
 # sex also has very low importance -> take both as don.classes 
+soepdescr <- soep %>% 
+  mutate(age = 2016 -gbja) %>% 
+  select(-persnr, -gbja, -rentenbeginn)
+names(soepdescr) <- c("Gender", "Pension Entitlements", "Exp. unempl.","Unempl. Benefit", "Education", "Income", "Exp. empl.", "Divorced", "Age")
+stargazer(soepdescr, out = "descriptives.tex", title = "Chosen descriptive statistics of the passive SOEP sample in 2016 with historic information",
+          digits = 0, notes = "Author's calculations based on SOEP v.33 passive West German population in 2016.", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "descrtable", notes.align = "l")
 
 ##### Perform Matching ####
 # define necessary string values
@@ -123,6 +131,7 @@ donclass <- c("sex", "divorced")
 xz.vars <- c(X.mtc, "income" )
 xyz.vars <- c(X.mtc, Y.vars, "income" )
 
+stargazer(X.mtc, summary = F, out = "matchingvariables.tex")
 
 # Hellinger Distance for matching variable quality
 A.mtc <- select(A, one_of(X.mtc))
@@ -130,14 +139,17 @@ B.mtc <- select(B, one_of(X.mtc))
 
 dist <- sapply(as.list(X.mtc), function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,y], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
 
+A <- A %>% 
+  select(-a)
 
 ##### simulation starts here ######
+fraction <- nrow(soep) / nrow(vskt.mp) 
 
-# need function that draws random sample from soepA, 10.000 times and perforems all sorts of matching on each of those samples and stores them in a list
+# need function that draws random sample from A, 10.000 times and performs all sorts of matching on each of those samples and stores them in a list
 
 # 3 repetitions:
 rep <- 5
-A_k <- as.list.data.frame(replicate(rep, sample_frac(soepA, fraction, replace = F), simplify = F))
+A_k <- as.list.data.frame(replicate(rep, sample_frac(A, fraction, replace = F), simplify = F))
 names(A_k) <- 1:rep
 
 distfuns1 <- list("hungarian" = c("hungarian",1), "lpsolve" = c("lpSolve", 5))
@@ -188,6 +200,11 @@ xtable(fullksmat, caption = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov
 
 stargazer(fullksmat, summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for several matching routines",
                       out = "ks.tex", colnames = T, digits = 4, flip = F, initial.zero = T, multicolumn = T, rownames =T)
+
+
+stargazer(summdist, summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Hot Deck Distance Matching",
+          colnames = T, digits = 4, flip = T, initial.zero = T, multicolumn = F,
+          rownames =T, se = as.list(summdist[2,], summdist[4,],summdist[6,],summdist[8,],summdist[10,],summdist[12,]))
 # find the number of rejected null hypotheses 
 
 
@@ -227,108 +244,19 @@ fullcorrchoice <- t(select(fullcorr, contains("income")))
 #takes a long long time!
 # but works great!
 
-xyztestdist <- setNames(lapply(seq_along(distfuns1), function(g) 
-            setNames(lapply(seq_along(distfuns2), function(s)
-              setNames(lapply(1:rep, function(z) mvartest(A=soep, 
-                B=simlist$distancematch[[g]][[s]][[z]])$p.value),
-                  names(A_k))),names(distfuns2))), names(distfuns1))
-
-xyztestrand <- setNames(lapply(seq_along(randomfuns1), function(g) 
-            setNames(lapply(seq_along(randomfuns2), function(s)
-              setNames(lapply(1:rep, function(z) mvartest(A=soep, 
-                B=simlist$randommatch[[g]][[s]][[z]])$p.value),
-                  names(A_k))),names(randomfuns2))), names(randomfuns1))
-
-xyztestrank <- setNames(lapply(seq_along(distfuns1), function(g) 
-                setNames(lapply(1:rep, function(z) mvartest(A=soep, 
-                  B=simlist$rankmatch[[g]][[z]])$p.value),
-                    names(A_k))), names(distfuns1))
+xyztestdist <- xyz.match(routine = "random", list1 = distfuns1, list2 = distfuns2)
+xyztestrand <- xyz.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
+xyztestrank <- xyz.match(routine = "rank", list1 = distfuns1)
 
 
 xyztestlist <- list("distancxyz" = xyztestdist , "randomxyz" = xyztestrand, "rankxyz" = xyztestrank)  
 
+xyztestrankdf <- cbind(ldply(xyztestrank2$hungarian), ldply(xyztestrank2$lpsolve, .id = NULL))
+names(xyztestrankdf) <- c("repetitions", "hungarian", "lpsolve")
+
+stargazer(xyztestrankdf)
 # done:
 # then aggregate and report thats it
-
-fused.1 <- fused.1 %>% 
-  mutate(b=0)
-
-B <- B %>% 
-  mutate(b=1)
-
-joint.post <- bind_rows(fused.1, B)
-
-joint.post <- joint.post %>% 
-  mutate(b=factor(b,ordered = F))
-
-###### Post matching #####
-
-######  4th validation level #####
-# visually:
-(birthplot.post <- mydensplot.post.sim(joint.post, "gbja", xname = "Income in €"))#,lmts =c(1, 25000)))
-
-# statistically
-# we can check both whether all X are marginally preserved, 
-# marginals by ks.test
-
-xz.vars <- c(X.mtc, "income" )
-
-ksfused <- select(fused.1, one_of(xz.vars))
-ksB <- select(B, one_of(xz.vars))
-
-kstest <- rbind(xz.vars,sapply(as.list(xz.vars), function(x) ks.test(ksfused[,x], ksB[,x], alternative = "two.sided")$p.value))
-rownames(kstest, do.NULL = TRUE, prefix = "row")
-rownames(kstest) <- c("Variables","Kolmogorov-Smirnov p-value")
-
-# and whether X,Z has been maintained 
-# use generalized KS test <- Peacock test
-#that's a lot of combinations! <- 15 tests!
-
-combinationsmat <- combinations(n = 6, r = 2, v = xz.vars, set=T, repeats.allowed = F)
-
-distequaltest <- vector(length = 15)
-xznames <- vector(length = 15) 
-for (i in seq_row(combinationsmat)){
-  distequaltest[i] <-cramer.test(as.matrix(select(ksfused, one_of(c(combinationsmat[1,1:2])))), as.matrix(select(ksB, one_of(c(combinationsmat[1,1:2])))))$p.value
-}
-save(distequaltest, file = "xztest.RDA")
-for (i in seq_row(combinationsmat)){
-  xznames[i] <- paste(c(combinationsmat[i,1], "vs", combinationsmat[i,2]), collapse="  ")
-}
-
-distequalmat <- rbind(xznames, distequaltest)
-
-#### 3rd evluation level ####
-
-#### Correlation matrix approach #####
-xyz.vars <- c(X.mtc, Y.vars, "income" )
-soepcorr <- select(soep, one_of(xyz.vars))
-fused1corr <- select(fused.1, one_of(xyz.vars))
-corrmatfull <- round(cor(soepcorr),2)
-corrmatfused <- round(cor(fused1corr),2)
-
-corrtestmat <- matrix(NA, nrow=7, ncol=7)
-for (i in 1:nrow(corrtestmat)) {
-  for (j in 1:ncol(corrtestmat)) {
-    corrtestmat[i,j] <- get.cocor.results(corrtest(corrmatfull[i,j],corrmatfused[i,j]))$fisher1925$p.value
-  }
-}
-corrtestmat[upper.tri(corrtestmat, diag = T)] <- NA
-
-# cannot reject the H0 that any of the correlation values are identical
-
-##### 2nd evaluation level #####
-
-# use cramer test to check f(x,y,z) has been preserved
-# we cannot include dichotome variables
-
-v <- factorsNumeric(select(soep, one_of(xyz.vars)))
-w <- factorsNumeric(select(fused.1, one_of(xyz.vars)))
-
-#takes a long long time!
-# but works great!
-xyztest <- cramer.test(as.matrix(v), as.matrix(w))
-
 
 ##### 1st evaluation level ####
 #order by persnr and persnrB then create indicator variable which is one if two variables are different
