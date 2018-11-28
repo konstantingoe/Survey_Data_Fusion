@@ -1,0 +1,1 @@
+path <- "/Users/konstantingobler/Desktop/Lebenseinkommen Projekt/data/"

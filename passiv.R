@@ -9,18 +9,48 @@ soep.mp <- import(paste(path, "soep_passive_ges.dta" , sep = "/"), setclass = "d
 
 vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass = "data.table")
 
-(X.vars <- intersect(names(soep.mp), names(vskt.mp)))
 
 soep.mp <- soep.mp %>% 
-  mutate(soep=1) %>% 
-  mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
-  mutate(wgt=1500)
-
+  mutate(sex = factor(sex, ordered = F)) %>% 
+  mutate(divorced = factor(divorced,ordered = F)) %>% 
+  #mutate(age_g = factor(age_g,ordered = T)) %>% 
+  mutate(age = 2015 -gbja) %>% 
+  mutate(soep=1)
 vskt.mp <- vskt.mp %>% 
-  mutate(soep=0) %>% 
-  mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
-  mutate(wgt=weight)
+  mutate(sex = factor(sex, ordered = F)) %>% 
+  mutate(divorced = factor(spez_scheidung,ordered = F)) %>% 
+  #mutate(age_g = factor(age_g,ordered = T))
+  mutate(expwork = exp_arbeit_20_bis2015) %>% 
+  mutate(expunempl = exp_al_20_bis2015) %>% 
+  mutate(unempben = alg_j_2015) %>% 
+  mutate(age = 2015 -gbja) %>% 
+  mutate(soep=0)
 
+
+
+(X.vars <- intersect(names(soep.mp), names(vskt.mp)))
+
+#SOEP
+forestSOEP <- randomForest(factor(education, ordered = T) ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = soep.mp, importance = T, corr.bias = T)
+
+pdf('forestSOEPpassiv.pdf',height=4, width=6)
+varImpPlot(forestSOEP,type=2, main = c("Random Forest Importance Plot", "für Variablenselektion im SOEP"))
+dev.off()
+(VI_FA <- importance(forestSOEP, type=2, scale = F))
+barplot(t(VI_FA/sum(VI_FA)))
+
+#VSKT
+forestVSKT <- randomForest(brutto_zens_2015 ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = vskt.mp, importance = T, corr.bias = T)
+pdf('forestVSKTpassiv.pdf',height=4, width=6)
+varImpPlot(forestVSKT,type=2, main = c("Random Forest Importance Plot" ,"für Variablenselektion in der VSKT"))
+dev.off()
+(VI_FB <- importance(forestVSKT, type=2, scale = F))
+
+barplot(t(VI_FB/sum(VI_FB)))
+
+
+soep.mp <- soep.mp %>% 
+  mutate(weight=sum(vskt.mp$weight)/nrow(soep.mp))
 
 joint <- bind_rows(soep.mp, vskt.mp)
 joint <- joint %>% 
@@ -30,15 +60,15 @@ joint <- joint %>%
 (birthplot <- mydensplot(joint, "gbja", xname = "Geburtskohorte"))
 ggsave("geburtsjahr_mp.pdf")
 
-(birthplot.w <- mydensplot(joint, "gbja", xname = "Geburtskohorte (gewichtet)", weight = "wgt"))
+(birthplot.w <- mydensplot(joint, "gbja", xname = "Geburtskohorte (gewichtet)", weight = "weight"))
 ggsave("geburtsjahr_mp_weighted.pdf")
 
 
-(birthdist <- mydistplot(joint, "gbja", xname = "Geburtskohorte")) 
-ggsave("geburtsjahr_dist_mp.pdf")
+#(birthdist <- mydistplot(joint, "gbja", xname = "Geburtskohorte")) 
+#ggsave("geburtsjahr_dist_mp.pdf")
 
-plot.grdgbja <- cowplot::plot_grid(birthplot, birthplot.w, birthdist, ncol=2, nrow=2)
-ggsave("grid_passiv1.pdf", plot.grdgbja)
+#plot.grdgbja <- cowplot::plot_grid(birthplot, birthplot.w, birthdist, ncol=2, nrow=2)
+#ggsave("grid_passiv1.pdf", plot.grdgbja)
 
 
 (kstest.gbja <- ks.test(soep.mp$gbja, vskt.mp$gbja, alternative = "two.sided"))
@@ -48,61 +78,75 @@ ggsave("grid_passiv1.pdf", plot.grdgbja)
 (rentenplot <- mydensplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in €"))
 ggsave("rente_mp.pdf")
 
-(rentenplot.w <- mydensplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in € (gewichtet)", weight="wgt"))
+(rentenplot.w <- mydensplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in € (gewichtet)", weight="weight"))
 ggsave("rente_mp_weighted.pdf")
 
-(rentendist <- mydistplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in €"))
-ggsave("rente_dist.pdf")
+#(rentendist <- mydistplot(joint, "rente_2015_gesamt", xname = "Rente jährlich in €"))
+#ggsave("rente_dist.pdf")
+
+(expworkplot <- mydensplot(joint, "expwork", xname = "Arbeitserfahrung bis Renteneintritt"))
+ggsave("expwork_mp.pdf")
+
+(expworkplot.w <- mydensplot(joint, "expwork", xname = "Arbeitserfahrung bis Renteneintritt (gewichtet)", weight="weight"))
+ggsave("expwork_weighted.pdf")
 
 (kstest.rente <- ks.test(soep.mp$rente_2015_gesamt, vskt.mp$rente_2015_gesamt, alternative = "two.sided"))
 
-plot.grdrente <- cowplot::plot_grid(rentenplot, rentenplot.w, rentendist, ncol=2, nrow=2)
-ggsave("grid_passiv2.pdf", plot.grdrente)
-
-
-#df.res <- data.frame(D = c(kstest.gbja$statistic, kstest.rente$statistic),
-#                     `p value` = c(kstest.gbja$p.value, kstest.rente$p.value))
-#stargazer(df.res)
+plot.grdrente <- cowplot::plot_grid(birthplot, birthplot.w, expworkplot, expworkplot.w, rentenplot, rentenplot.w, ncol=2, nrow=3)
+ggsave("grid_passiv.pdf", plot.grdrente)
 
 #### checking multivariate correlation structure (usually)
 
 ### It might be worth adding a income indicator sth like 
-### last observed income
-
-### Pension, Birthyear and Working experience show the highest effect (sex as donation class)
-spearman2(education~ sex+gbja+ exp_arbeit+ rente_2015_gesamt,
-          p=2, data=soep.mp)
-
-## doing the same for VSKT
-
-spearman2(brutto_zens_1998~ sex+gbja+ exp_arbeit +rente_2015_gesamt,
-          p=2, data=vskt.mp)
 
 
-vskt.vars <- setdiff(names(vskt.mp), names(soep.mp)) # available just in VSKT
-(Xp.mtc <- c("rente_2015_gesamt", "exp_arbeit"))
-(Xp.mtc2 <- c("rente_2015_gesamt", "exp_arbeit", "gbja"))
-(donclass1 <- c("gbja_cat","sex"))
-(donclass2 <- "sex")
+Z.vars <- setdiff(names(vskt.mp), names(soep.mp)) # available just in VSKT
+(X.mtc <- c("rente_2015_gesamt", "expwork", "gbja"))
+(donclass <- c("divorced","sex"))
+
+distancematch <- distancehd(A=soep.mp, B=vskt.mp, distfun = "minimax") 
+randommatch <- randomhd(A=soep.mp, B=vskt.mp, distfun = "ANN", cutdon="rot", weight = "weight") 
+randommatch_unwgt <- randomhd(A=soep.mp, B=vskt.mp, distfun = "ANN", cutdon="rot") 
+
+xz.vars <- c(X.mtc, "brutto_zens_2013", "brutto_zens_2014", "brutto_zens_2015")
+xz.varsl <- as.list(c(X.mtc, "brutto_zens_2013", "brutto_zens_2014", "brutto_zens_2015"))
+names(xz.varsl) <- c("Rente 2015", "Arbeitserfahrung 2012", "Geburtsjahr", "Arbeitsentgeld 2013", "Arbeitsentgeld 2014", "Arbeitsentgeld 2015")
+
+dist.hellinger <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
+  distancematch, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+
+rand.hellinger <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
+  randommatch, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+
+rand.hellinger_unwgt <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
+  randommatch_unwgt, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
 
 
-
-nnd.hd <- NND.hotdeck(data.rec=soep.mp, data.don=vskt.mp,
-                      match.vars=Xp.mtc2, 
-                      don.class = donclass2,
-                      dist.fun = "minimax",
-                      rank = TRUE,
-                      constrained = TRUE,
-                      constr.alg = "lpSolve",
-                      k=5)
-
-fA.nnd <- create.fused(data.rec=soep.mp, data.don=vskt.mp,
-                       mtc.ids=nnd.hd$mtc.ids,
-                       z.vars=vskt.vars)
+kstest <- lapply(xz.varsl, function(t) ks.test(select(
+  distancematch, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], 
+  alternative = "two.sided")$statistic)
+kstest2 <- lapply(xz.varsl, function(t) ks.test(select(
+  randommatch, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], 
+  alternative = "two.sided")$statistic)
 
 
-save(nnd.hd, file = "match_passiv_gesamt.RDA")
-save(fA.nnd, file = "fused_passiv_gesamt.RDA")
+hellingerdf <- ldply(rand.hellinger, data.frame, .id = "Variable")
+names(hellingerdf) <- c("Variable", "Hellinger Distanz")
+stargazer(hellingerdf, summary = F, title = "Hellinger Distanzen für die Mathching-Güte der passiven Bevölkerung", out = "hellinger_passiv.tex",
+          notes = "Eigene Berechnungen auf Basis des SOEP v.32 und der VSKT; Für Hellinger Distanzen unter dem Wert 0.05 kann von Gleichheit der Verteilungen ausgegangen werden",
+          notes.align = "l")
+
+save(randommatch, file="passive_match_weighted.RDA")
+write.dta(randommatch, file = "passive_match_weighted.dta")
+
+
+#save(nnd.hd, file = "match_passiv_gesamt.RDA")
+#save(fA.nnd, file = "fused_passiv_gesamt.RDA")
 
 ##########################################################
 ##########################################################

@@ -234,12 +234,13 @@ distancehd <- function(A=A,B=B, distfun = mahalanobis, constr = c(algorithm="hun
 }
 
 #random hotdeck
-randomhd <- function(A=A,B=B, distfun = mahalanobis, cutdon = "rot" ){
+randomhd <- function(A=A,B=B, distfun = mahalanobis, cutdon = "rot", weight =NULL ){
   match2 <- RANDwNND.hotdeck(data.rec=A, data.don=B,
                        match.vars=X.mtc, 
                        don.class = donclass,
                        dist.fun = distfun,
-                       cut.don = cutdon
+                       cut.don = cutdon,
+                       weight.don = weight
                        )
   fused2 <- create.fused(data.rec=A, data.don=B,
                         mtc.ids=match2$mtc.ids,
