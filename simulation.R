@@ -168,7 +168,7 @@ simlist <- list("distancematch" = distancematch , "randommatch" = randommatch, "
 
 save(simlist, file= "simulation_fused.RDA")
 
-
+load("simulation_fused.RDA")
 ##### 4th level ######
 ksB <- select(B, one_of(xz.vars))
 xzlist <- list("pension" = xz.vars[1], "birthyear" = xz.vars[2], "unemplben" = xz.vars[3],
@@ -187,34 +187,39 @@ summdist <- ksaggregate(routine = "distance",list1 = distfuns1, list2 = distfuns
 summrand <- ksaggregate(routine = "random",list1 = randomfuns1, list2 = randomfuns2)
 summrank <- ksaggregate(routine = "rank",list1 = distfuns1)
 
-fullks <- rbind("summdist" = summdist, "summrand" = summrand, "summrank" = summrank)
-routiname <-  c("hungarian mahalanobis distance mean", "hungarian minimax distance mean", "hungarian gower distance mean", 
-                "lpSolve mahalanobis distance mean", "lpSolve minimax distance mean", "lpSolve gower distance mean",
-                "cutrot mahalanobis random mean", "cutrot minimax random mean", "cutrot gower random mean", "cutrot ann random mean",
-                "cutmin mahalanobis random mean", "cutmin minimax random mean", "cutmin gower random mean", "cutmin ann random mean",
-                "hungarian rank mean", "lpSolve rank mean")
-rownames(fullks) <- routiname
-fullksmat <- t(fullks)
-xtable(fullksmat, caption = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for several matching routines",
-                          digits = 3, auto = T)
-
-stargazer(fullksmat, summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for several matching routines",
-                      out = "ks.tex", colnames = T, digits = 4, flip = F, initial.zero = T, multicolumn = T, rownames =T)
+distance.output <- kstex(data=summdist, routine = "distance")
+random.output <- kstex(data=summrand, routine = "random")
+rank.output <-  kstex(data=summrank, routine = "rank")
 
 
-stargazer(summdist, summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Hot Deck Distance Matching",
-          colnames = T, digits = 4, flip = T, initial.zero = T, multicolumn = F,
-          rownames =T, se = as.list(summdist[2,], summdist[4,],summdist[6,],summdist[8,],summdist[10,],summdist[12,]))
-# find the number of rejected null hypotheses 
+# Power of test!
+# divide 1 - number of rejected Null hypothesis by number of tests
+#draw p.value
+ksdistp <- KS.match(routine = "distance", list1 = distfuns1, list2 = distfuns2, out = "p.value")
+ksdistpower <- kspower(routine = "distance", data = ksdistp, list1 = distfuns1, list2 = distfuns2)
 
+ksrandp <- KS.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2, out = "p.value")
+ksrandpower <- kspower(routine = "random", data = ksrandp, list1 = randomfuns1, list2 = randomfuns2)
 
+ksrankp <- KS.match(routine = "rank", list1 = distfuns1, out = "p.value")
+ksrankpower <- kspower(routine = "rank", data = ksrankp, list1 = distfuns1)
+
+# latex tables
+
+stargazer(rbind(distance.output,ksdistpower), summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Distance Hot Deck Matching routines",
+          out = "ksdist.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
+
+stargazer(rbind(random.output,ksrandpower), summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Random Distance Hot Deck Matching routines",
+          out = "ksrand.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
+
+stargazer(rbind(rank.output,ksrankpower), summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Rank Hot Deck Matching routines",
+          out = "ksrank.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
 #######3rd level:
 #### Correlation matrix #####
 
 xyz.vars <- c(X.mtc, Y.vars, "income" )
 corrmatfull <- cor(select(soep, one_of(xyz.vars)))
-
 
 correlationsimdistance <- corr.match(routine = "distance", list1 = distfuns1, list2 = distfuns2)
 correlationsimrandom <- corr.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
@@ -232,12 +237,18 @@ distcorrmean <- corraggregate(routine = "distance", list1 = distfuns1, list2 = d
 randomcorrmean <- corraggregate(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
 rankcorrmean <- corraggregate(routine = "rank", list1 = distfuns1)
 
-fullcorr <- rbind("distcorrmean" = distcorrmean, "randomcorrmean" = randomcorrmean, "rankcorrmean" = rankcorrmean)
-rownames(fullcorr) <- routiname
+distcorrchoice <- corrtex(data = select(distcorrmean, contains("income")), routine = "distance")
+randcorrchoice <- corrtex(data = select(randomcorrmean, contains("income")), routine = "random")
+rankcorrchoice <- select(as.data.frame(corrtex(data = rankcorrmean, routine = "rank")), contains("income"))
 
-fullcorrchoice <- t(select(fullcorr, contains("income")))
 
-#also here find a way to aggregate and present
+# Power of test!
+# divide 1 - number of rejected Null hypothesis by number of tests
+#draw p.value
+corrdistpower <- corrpower(routine = "distance", data = corredist, list1 = distfuns1, list2 = distfuns2)
+corrrandpower <- corrpower(routine = "random", data = correrandom, list1 = randomfuns1, list2 = randomfuns2)
+corrrankpower <- corrpower(routine = "rank", data = correrank, list1 = distfuns1)
+
 
 ######2nd level:
 

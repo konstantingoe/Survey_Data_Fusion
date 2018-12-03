@@ -212,7 +212,7 @@ pairedttest <- function(x,y){
 
 corrtest <- function(x,y){
   test <- cocor.indep.groups(x, y, 
-                     n1 = 4884, n2 =1465, data.name = c("soepcorr","fusedcorr"))
+                     n1 = nrow(soep), n2 =nrow(A_k$`1`), data.name = c("soepcorr","fusedcorr"))
   return(test)
 }
 
@@ -307,8 +307,20 @@ simSumm2 <- function(repetitions = repetitions, data = data){
 }
 
 simSumm3 <- function(data = data){ 
+  summ <- lapply(select(data, -repetitions), 
+                 function(x) rbind(sd = sd(x)))
+  return(data.frame(summ))
+}
+
+simSumm4 <- function(repetitions = repetitions, data = data){ 
   summ <- lapply(data, 
                  function(x) rbind( mean = mean(x)))
+  return(data.frame(summ))
+}
+
+simSumm5 <- function(data = data){ 
+  summ <- lapply(data, 
+                 function(x) rbind(sd = sd(x)))
   return(data.frame(summ))
 }
 
@@ -380,31 +392,121 @@ ksaggregate <- function(routine = routine, list1 = list1, list2 = NULL){
           setNames(lapply(seq_along(list2), function(z) 
             ldply(kslist$distanceks[[w]][[z]], data.frame, .id = "repetitions")), names(list2))),names(list1))
         
-        stat <- setNames(lapply(seq_along(list1), function(s) 
+        stat1 <- setNames(lapply(seq_along(list1), function(s) 
           setNames(lapply(seq_along(list2), function(t) 
             simSumm2(data=df[[s]][[t]])), names(list2))), names(list1))
-        return(do.call("rbind",(do.call("rbind", stat))))
+        stat1 <- do.call("rbind",(do.call("rbind", stat1)))
+        stat2 <- setNames(lapply(seq_along(list1), function(s) 
+          setNames(lapply(seq_along(list2), function(t) 
+            simSumm3(data=df[[s]][[t]])), names(list2))), names(list1))
+        stat2 <- do.call("rbind",(do.call("rbind", stat2)))
+        return(rbind(stat1,stat2))
   }else if (routine == "random"){
     df <- setNames(lapply(seq_along(list1), function(w)
       setNames(lapply(seq_along(list2), function(z) 
         ldply(kslist$randomks[[w]][[z]], data.frame, .id = "repetitions")), names(list2))),names(list1))
     
-    stat <- setNames(lapply(seq_along(list1), function(s) 
+    stat1 <- setNames(lapply(seq_along(list1), function(s) 
       setNames(lapply(seq_along(list2), function(t) 
         simSumm2(data=df[[s]][[t]])), names(list2))), names(list1))
-    return(do.call("rbind",(do.call("rbind", stat))))
+    stat1 <- do.call("rbind",(do.call("rbind", stat1)))
+    stat2 <- setNames(lapply(seq_along(list1), function(s) 
+      setNames(lapply(seq_along(list2), function(t) 
+        simSumm3(data=df[[s]][[t]])), names(list2))), names(list1))
+    stat2 <- do.call("rbind",(do.call("rbind", stat2)))
+    return(rbind(stat1,stat2))
   }else if (routine == "rank"){
     df <- setNames(lapply(seq_along(list1), function(w)
          ldply(kslist$rankks[[w]], data.frame, .id = "repetitions")),names(list1))
      
-     stat <- setNames(lapply(seq_along(list1), function(s) 
-         simSumm2(data=df[[s]])), names(list1)) 
-     return(do.call("rbind", stat))
+    stat1 <- setNames(lapply(seq_along(list1), function(s) 
+        simSumm2(data=df[[s]])), names(list1))
+    stat1 <- do.call("rbind",(do.call("rbind", stat1)))
+    stat2 <- setNames(lapply(seq_along(list1), function(s) 
+        simSumm3(data=df[[s]])), names(list1))
+    stat2 <- do.call("rbind",(do.call("rbind", stat2)))
+    return(rbind(stat1,stat2))
+    
   }
 }
 
 
-##### 3rd level: Correlation
+#latex function
+
+kstex <- function(data=data, routine = routine ){
+  if (routine == "distance"){
+        
+      test0 <- apply(t(data[1:6,]), 2, round, digits = 4)
+      test1 <- t(apply(apply(data[7:nrow(data),], 2, round, digits = 4), 2, function(i) paste("(", i, ")", sep="")))
+      output <- NULL
+      for (i in 1:nrow(test0)){
+        output <- rbind(output, test0[i,])
+        output <- rbind(output, test1[i,])
+      }
+      rownames(output) <- c("Pension", "", "Birthyear", "", "Unempben", "", "Workexp", "", "Unempexp","", "Income","")
+      return(output)
+  }else if (routine == "random"){
+    test0 <- apply(t(data[1:8,]), 2, round, digits = 4)
+    test1 <- t(apply(apply(data[9:nrow(data),], 2, round, digits = 4), 2, function(i) paste("(", i, ")", sep="")))
+    output <- NULL
+    for (i in 1:nrow(test0)){
+      output <- rbind(output, test0[i,])
+      output <- rbind(output, test1[i,])
+    }
+    rownames(output) <- c("Pension", "", "Birthyear", "", "Unempben", "", "Workexp", "", "Unempexp","", "Income","")
+    return(output)
+  }else if (routine == "rank"){
+    test0 <- apply(data[1:6,], 2, round, digits = 4)
+    test1 <- apply(apply(data[7:nrow(data),], 2, round, digits = 4), 2, function(i) paste("(", i, ")", sep=""))
+    output <- NULL
+    for (i in 1:nrow(test0)){
+      output <- rbind(output, test0[i,])
+      output <- rbind(output, test1[i,])
+    }
+    rownames(output) <- c("Pension", "", "Birthyear", "", "Unempben", "", "Workexp", "", "Unempexp","", "Income","")
+    return(output)
+  }
+}
+
+
+# Testpower function 
+pvalue <- 0.05
+
+kspower <- function(routine = routine , data=data, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+     agg <- setNames(lapply(seq_along(list1), function(r) setNames(lapply(seq_along(list2), function(s) lapply(1:rep, function(t) 
+              sum(sum(rowSums(as.matrix(data[[r]][[s]][[t]]) > pvalue)) / nrow(as.matrix(data[[r]][[s]][[t]]))))), names(list2))),names(list1))
+     output <- NULL
+     for (i in 1:3){
+       for (j in 1:3){
+         output[i] <- sum(unlist(agg$hungarian[[i]])) /rep
+         output[3+j] <- sum(unlist(agg$lpsolve[[j]])) /rep 
+       }
+     }
+     return(round(output, digits = 4))
+  }else if (routine == "random"){
+    agg <- setNames(lapply(seq_along(list1), function(r) setNames(lapply(seq_along(list2), function(s) lapply(1:rep, function(t) 
+            sum(sum(rowSums(as.matrix(data[[r]][[s]][[t]]) > pvalue)) / nrow(as.matrix(data[[r]][[s]][[t]]))))), names(list2))),names(list1))
+    output <- NULL
+    for (i in 1:4){
+      for (j in 1:4){
+        output[i] <- sum(unlist(agg$cutdon.rot[[i]])) /rep
+        output[4+j] <- sum(unlist(agg$cutdon.min[[j]])) /rep 
+      }
+    }
+    return(round(output, digits = 4))
+  }else if (routine == "rank"){
+    agg <- setNames(lapply(seq_along(list1), function(r) 
+             lapply(1:rep, function(t) 
+                sum(sum(rowSums(as.matrix(data[[r]][[t]]) > pvalue)) / nrow(as.matrix(data[[r]][[t]]))))),names(list1))
+    output <- NULL
+        output[1] <- sum(unlist(agg$hungarian)) /rep
+        output[2] <- sum(unlist(agg$lpsolve)) /rep 
+    return(round(output, digits = 4))
+  }
+}  
+
+##### 3rd level: Correlation ####
 
 corr.match <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
@@ -468,31 +570,118 @@ montecarlocorr <- function(routine = routine, list1 = list1, list2 = NULL){
 
 corraggregate <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
-    stat <- setNames(lapply(seq_along(list1), function(s) 
+    df <-  setNames(lapply(seq_along(list1), function(z)
+      setNames(lapply(seq_along(list2), function(y)
+        ldply(lapply(1:rep, function(x) correshape(
+          data=as.data.frame(correlationlist$distancecorr[[z]][[y]][[x]]))))), names(list2))), names(list1))
+    
+    stat1 <- setNames(lapply(seq_along(list1), function(s) 
       setNames(lapply(seq_along(list2), function(t) 
-        simSumm3(data=corrlist$distancecorr[[s]][[t]])), names(list2))), names(list1))
-    return(do.call("rbind",(do.call("rbind", stat))))
+        simSumm4(data=df[[s]][[t]])), names(list2))), names(list1))
+    stat1 <- do.call("rbind",(do.call("rbind", stat1)))
+    stat2 <- setNames(lapply(seq_along(list1), function(s) 
+      setNames(lapply(seq_along(list2), function(t) 
+        simSumm5(data=df[[s]][[t]])), names(list2))), names(list1))
+    stat2 <- do.call("rbind",(do.call("rbind", stat2)))
+    return(rbind(stat1,stat2))
   }else if (routine == "random"){
-       stat <- setNames(lapply(seq_along(list1), function(s) 
+    df <-  setNames(lapply(seq_along(list1), function(z)
+      setNames(lapply(seq_along(list2), function(y)
+        ldply(lapply(1:rep, function(x) correshape(
+          data=as.data.frame(correlationlist$randomcorr[[z]][[y]][[x]]))))), names(list2))), names(list1))
+    
+    stat1 <- setNames(lapply(seq_along(list1), function(s) 
       setNames(lapply(seq_along(list2), function(t) 
-        simSumm3(data=corrlist$randomcorr[[s]][[t]])), names(list2))), names(list1))
-    return(do.call("rbind",(do.call("rbind", stat))))
+        simSumm4(data=df[[s]][[t]])), names(list2))), names(list1))
+    stat1 <- do.call("rbind",(do.call("rbind", stat1)))
+    stat2 <- setNames(lapply(seq_along(list1), function(s) 
+      setNames(lapply(seq_along(list2), function(t) 
+        simSumm5(data=df[[s]][[t]])), names(list2))), names(list1))
+    stat2 <- do.call("rbind",(do.call("rbind", stat2)))
+    return(rbind(stat1,stat2))
   }else if (routine == "rank"){
-        stat <- setNames(lapply(seq_along(list1), function(s) 
-      simSumm3(data=corrlist$rankcorr[[s]])), names(list1)) 
-    return(do.call("rbind", stat))
+    df <-  setNames(lapply(seq_along(list1), function(z)
+      ldply(lapply(1:rep, function(x) correshape(
+        data=as.data.frame(correlationlist$rankcorr[[z]][[x]]))))), names(list1))
+    
+    stat1 <- setNames(lapply(seq_along(list1), function(s) 
+      simSumm4(data=df[[s]])), names(list1))
+    stat1 <- do.call("rbind",(do.call("rbind", stat1)))
+    stat2 <- setNames(lapply(seq_along(list1), function(s) 
+      simSumm5(data=df[[s]])), names(list1))
+    stat2 <- do.call("rbind",(do.call("rbind", stat2)))
+    return(rbind(stat1,stat2))
+    
   }
 }
 
 
+corrtex <- function(data=data, routine = routine ){
+  if (routine == "distance"){
+    
+    test0 <- apply(t(data[1:6,]), 2, round, digits = 4)
+    test1 <- t(apply(apply(data[7:nrow(data),], 2, round, digits = 4), 2, function(i) paste("(", i, ")", sep="")))
+    output <- NULL
+    for (i in 1:nrow(test0)){
+      output <- rbind(output, test0[i,])
+      output <- rbind(output, test1[i,])
+    }
+    rownames(output) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
+
+    return(output)
+  }else if (routine == "random"){
+    test0 <- apply(t(data[1:8,]), 2, round, digits = 4)
+    test1 <- t(apply(apply(data[9:nrow(data),], 2, round, digits = 4), 2, function(i) paste("(", i, ")", sep="")))
+    output <- NULL
+    for (i in 1:nrow(test0)){
+      output <- rbind(output, test0[i,])
+      output <- rbind(output, test1[i,])
+    }
+    rownames(output) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
+    return(output)
+  }else if (routine == "rank"){
+    test0 <- apply(t(data[1:21,]), 2, round, digits = 4)
+    test1 <- t(apply(apply(data[22:nrow(data),], 2, round, digits = 4), 2, function(i) paste("(", i, ")", sep="")))
+    output <- NULL
+    for (i in 1:nrow(test0)){
+      output <- rbind(output, test0[i,])
+      output <- rbind(output, test1[i,])
+    }
+    #rownames(output) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
+    return(output)
+  }
+}
+
+#### testpower correlation ####
+
+corrpower <- function(routine = routine , data=data, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+    agg <- setNames(sapply(seq_along(list1), function(r) 
+      setNames(sapply(seq_along(list2), 
+                      function(s) sum(rowSums(as.matrix(data[[r]][[s]]) > pvalue) / ncol(as.matrix(data[[r]][[s]]))) / rep), names(list2))), names(list1))
+    output <- as.vector(agg)
+      return(output)
+    }else if (routine == "random"){
+      agg <- setNames(sapply(seq_along(list1), function(r) 
+        setNames(sapply(seq_along(list2), 
+                        function(s) sum(rowSums(as.matrix(data[[r]][[s]]) > pvalue) / ncol(as.matrix(data[[r]][[s]]))) / rep), names(list2))), names(list1))
+      output <- as.vector(agg)
+      return(output)
+  }else if (routine == "rank"){
+    agg2 <- setNames(sapply(seq_along(list1), 
+             function(s) sum(rowSums(as.matrix(data[[s]]) > pvalue) / ncol(as.matrix(data[[s]]))) / rep), names(list1))
+    return(agg2)
+  }
+}  
+
 ###### Level 2: Preserving the distribution #####
 
 
-xyztestdist <- setNames(lapply(seq_along(distfuns1), function(g) 
-  setNames(lapply(seq_along(distfuns2), function(s)
-    setNames(lapply(1:rep, function(z) mvartest(A=soep, 
-       B=simlist$distancematch[[g]][[s]][[z]])$p.value),
-         names(A_k))),names(distfuns2))), names(distfuns1))
+#xyztestdist <- setNames(lapply(seq_along(distfuns1), function(g) 
+#  setNames(lapply(seq_along(distfuns2), function(s)
+ #   setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+  #     B=simlist$distancematch[[g]][[s]][[z]])$p.value),
+   #      names(A_k))),names(distfuns2))), names(distfuns1))
 
 
 xyz.match <- function(routine = routine, list1 = list1, list2 = NULL){
