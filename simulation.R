@@ -4,7 +4,7 @@ rm(list=ls())
 source("packages.R")
 source("functions.R")
 source(".path.R")
-
+ 
 set.seed(1234)
 
 
@@ -106,8 +106,6 @@ pdf('forestB.pdf',height=4, width=6)
 varImpPlot(forestB,type=2, main = "")
 dev.off()
 
-sort(imp, decreasing = T) 
-
 (VI_FB <- importance(forestB, type=2, scale = F))
 
 barplot(t(VI_FB/sum(VI_FB)))
@@ -119,7 +117,7 @@ soepdescr <- soep %>%
   select(-persnr, -gbja, -rentenbeginn)
 names(soepdescr) <- c("Gender", "Pension Entitlements", "Exp. unempl.","Unempl. Benefit", "Education", "Income", "Exp. empl.", "Divorced", "Age")
 stargazer(soepdescr, out = "descriptives.tex", title = "Chosen descriptive statistics of the passive SOEP sample in 2016 with historic information",
-          digits = 0, notes = "Author's calculations based on SOEP v.33 passive West German population in 2016.", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "descrtable", notes.align = "l")
+          digits = 0, notes = "Author's calculations based on SOEP v.33 passive West German population in 2016.", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "descrtable", notes.align = "l", summary.logical=T)
 
 ##### Perform Matching ####
 # define necessary string values
@@ -148,7 +146,7 @@ fraction <- nrow(soep) / nrow(vskt.mp)
 # need function that draws random sample from A, 10.000 times and performs all sorts of matching on each of those samples and stores them in a list
 
 # 3 repetitions:
-rep <- 5
+rep <- 100
 A_k <- as.list.data.frame(replicate(rep, sample_frac(A, fraction, replace = F), simplify = F))
 names(A_k) <- 1:rep
 
@@ -168,7 +166,7 @@ simlist <- list("distancematch" = distancematch , "randommatch" = randommatch, "
 
 save(simlist, file= "simulation_fused.RDA")
 
-load("simulation_fused.RDA")
+#load("simulation_fused.RDA")
 ##### 4th level ######
 ksB <- select(B, one_of(xz.vars))
 xzlist <- list("pension" = xz.vars[1], "birthyear" = xz.vars[2], "unemplben" = xz.vars[3],
@@ -206,7 +204,7 @@ ksrankpower <- kspower(routine = "rank", data = ksrankp, list1 = distfuns1)
 
 # latex tables
 
-stargazer(rbind(distance.output,ksdistpower), summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Distance Hot Deck Matching routines",
+stargazer(rbind(distance.output,ksdistpower), summary = F, title = "Mean over 100 Monte Carlo draws of Kolmogorov-Smirnov distance for Distance Hot Deck Matching routines",
           out = "ksdist.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
 stargazer(rbind(random.output,ksrandpower), summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Random Distance Hot Deck Matching routines",
@@ -241,6 +239,18 @@ distcorrchoice <- corrtex(data = select(distcorrmean, contains("income")), routi
 randcorrchoice <- corrtex(data = select(randomcorrmean, contains("income")), routine = "random")
 rankcorrchoice <- select(as.data.frame(corrtex(data = rankcorrmean, routine = "rank")), contains("income"))
 
+#little workaround for the presentation
+a <- t(rankcorrchoice)
+b <- cbind(a[,1], a[,3])
+c <-  cbind(a[,2], a[,4])
+e <-  NULL
+ for (i in 1:nrow(b)){
+  e <- rbind(e, b[i,])
+  e <- rbind(e, c[i,])
+ }
+rownames(e) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
+colnames(e) <- c("Hungarian", "LpSolve")
+
 
 # Power of test!
 # divide 1 - number of rejected Null hypothesis by number of tests
@@ -250,22 +260,50 @@ corrrandpower <- corrpower(routine = "random", data = correrandom, list1 = rando
 corrrankpower <- corrpower(routine = "rank", data = correrank, list1 = distfuns1)
 
 
+# latex tables
+
+stargazer(rbind(distcorrchoice,corrdistpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Distance Hot Deck Matching routines",
+          out = "corrdist.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
+
+stargazer(rbind(randcorrchoice,corrrandpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Random Distance Hot Deck Matching routines",
+          out = "corrrand.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
+
+stargazer(rbind(e,corrrankpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Rank Hot Deck Matching routines",
+          out = "corrrank.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
+
+
+
 ######2nd level:
 
 #takes a long long time!
 # but works great!
 
-xyztestdist <- xyz.match(routine = "random", list1 = distfuns1, list2 = distfuns2)
+xyztestdist <- xyz.match(routine = "distance", list1 = distfuns1, list2 = distfuns2)
+save(xyztestdist, file = "cramerdist.RDA")
 xyztestrand <- xyz.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
+save(xyztestrand, file = "cramerrand.RDA")
 xyztestrank <- xyz.match(routine = "rank", list1 = distfuns1)
+save(xyztestrank, file = "cramerrank.RDA")
+
+xyztestdistdf <- xyztestdf(data =xyztestdist, routine = "distance", list1 = distfuns1, list2 = distfuns2)
+names(xyztestdistdf) <- c("HUmahalanobis", "HUminimax", "HUgower","lpmahalanobis", "lpminimax", "lpgower")
+stargazer(xyztestdistdf, title = "Multivariate cramer test for distributional equality after distance hot deck matching", out = "xyzdist.tex", omit.summary.stat = c("p25", "p75"))
+
+xyztestranddf <- xyztestdf(data =xyztestrand, routine = "random", list1 = randomfuns1, list2 = randomfuns2)
+names(xyztestranddf) <- c("rotmahalanobis", "rotminimax", "rotgower","rotANN", "minmahalanobis", "minminimax", "mingower", "minANN")
+stargazer(xyztestranddf, title = "Multivariate cramer test for distributional equality after random distance hot deck matching", out = "xyzrand.tex",  omit.summary.stat = c("p25", "p75"))
+
+xyztestrankdf <- xyztestdf(data =xyztestrank, routine = "rank", list1 = distfuns1)
+names(xyztestrankdf) <- c("hungarian", "lpsolve")
+stargazer(xyztestrankdf, title = "Multivariate cramer test for distributional equality after rank hot deck matching", out = "xyzrank.tex",  omit.summary.stat = c("p25", "p75"))
 
 
-xyztestlist <- list("distancxyz" = xyztestdist , "randomxyz" = xyztestrand, "rankxyz" = xyztestrank)  
+# finally construct testpower: as number of H0 / rep per routine
 
-xyztestrankdf <- cbind(ldply(xyztestrank2$hungarian), ldply(xyztestrank2$lpsolve, .id = NULL))
-names(xyztestrankdf) <- c("repetitions", "hungarian", "lpsolve")
+disttestpower <- t(rowSums(t(as.matrix(xyztestdistdf)) >pvalue) / rep)
+randtestpower <- t(rowSums(t(as.matrix(xyztestranddf)) >pvalue) / rep)
+ranktestpower <- t(rowSums(t(as.matrix(xyztestrankdf)) >pvalue) / rep)
 
-stargazer(xyztestrankdf)
 # done:
 # then aggregate and report thats it
 

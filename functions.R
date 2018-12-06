@@ -335,19 +335,19 @@ nullToNA <- function(x) {
 
 montecarlofunc <- function(routine = routine, list1 = list1, list2 =NULL, FUN=FUN) {
   if (routine == "distance"){
-    lapply(list1, function(y) 
-      lapply(list2, function(z) 
-        lapply(A_k, function(x) FUN(x,
+    llply(.progress = "text", list1, function(y) 
+      llply(.progress = "text", list2, function(z) 
+        llply(.progress = "text", A_k, function(x) FUN(x,
                                     B, distfun = z, constr = y))))
   }else if (routine == "random"){
-    lapply(list1, function(y) 
-      lapply(list2, function(z) 
-        lapply(A_k, function(x) FUN(x,
+    llply(.progress = "text", list1, function(y) 
+      llply(.progress = "text", list2, function(z) 
+        llply(.progress = "text", A_k, function(x) FUN(x,
                                     B, distfun = z, cutdon = y))))
     
   }else if (routine == "rank"){
-    lapply(list1, function(y) 
-      lapply(A_k, function(x) FUN(x,
+    llply(.progress = "text", list1, function(y) 
+      llply(.progress = "text", A_k, function(x) FUN(x,
                                   B, constr = y)))
   }
   
@@ -660,49 +660,73 @@ corrpower <- function(routine = routine , data=data, list1 = list1, list2 = NULL
       setNames(sapply(seq_along(list2), 
                       function(s) sum(rowSums(as.matrix(data[[r]][[s]]) > pvalue) / ncol(as.matrix(data[[r]][[s]]))) / rep), names(list2))), names(list1))
     output <- as.vector(agg)
-      return(output)
-    }else if (routine == "random"){
+    return(round(output, digits = 4))
+  }else if (routine == "random"){
       agg <- setNames(sapply(seq_along(list1), function(r) 
         setNames(sapply(seq_along(list2), 
                         function(s) sum(rowSums(as.matrix(data[[r]][[s]]) > pvalue) / ncol(as.matrix(data[[r]][[s]]))) / rep), names(list2))), names(list1))
       output <- as.vector(agg)
-      return(output)
+      return(round(output, digits = 4))
   }else if (routine == "rank"){
     agg2 <- setNames(sapply(seq_along(list1), 
              function(s) sum(rowSums(as.matrix(data[[s]]) > pvalue) / ncol(as.matrix(data[[s]]))) / rep), names(list1))
-    return(agg2)
+    return(round(agg2, digits = 4))
   }
 }  
 
 ###### Level 2: Preserving the distribution #####
 
-
-#xyztestdist <- setNames(lapply(seq_along(distfuns1), function(g) 
-#  setNames(lapply(seq_along(distfuns2), function(s)
- #   setNames(lapply(1:rep, function(z) mvartest(A=soep, 
-  #     B=simlist$distancematch[[g]][[s]][[z]])$p.value),
-   #      names(A_k))),names(distfuns2))), names(distfuns1))
-
-
 xyz.match <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
-    xyz <- setNames(lapply(seq_along(list1), function(g) 
-      setNames(lapply(seq_along(list2), function(s)
-        setNames(lapply(1:rep, function(z) mvartest(A=soep, 
-          B=simlist$distancematch[[g]][[s]][[z]]$p.value)),names(A_k))),names(list2))), names(list1))
+    xyz <- setNames(llply(.progress = "tk",seq_along(list1), function(g) 
+      setNames(llpply(.progres = "text",seq_along(list2), function(s)
+        setNames(llply(.progress = "text",1:rep, function(z) mvartest(A=soep, 
+          B=simlist$distancematch[[g]][[s]][[z]])$p.value),names(A_k))),names(list2))), names(list1))
     return(xyz)
     
   }else if (routine == "random"){
-    xyz <- setNames(lapply(seq_along(list1), function(g) 
-      setNames(lapply(seq_along(list2), function(s)
-        setNames(lapply(1:rep, function(z) mvartest(A=soep, 
-          B=simlist$randommatch[[g]][[s]][[z]]$p.value)),names(A_k))),names(list2))), names(list1))
+    xyz <- setNames(llply(.progress = "tk", seq_along(list1), function(g) 
+      setNames(llply(.progress = "text",seq_along(list2), function(s)
+        setNames(llply(.progress = "text",1:rep, function(z) mvartest(A=soep, 
+          B=simlist$randommatch[[g]][[s]][[z]])$p.value),names(A_k))),names(list2))), names(list1))
     return(xyz)
   }else if (routine == "rank"){
-    xyz <- setNames(lapply(seq_along(distfuns1), function(g) 
-        setNames(lapply(1:rep, function(z) mvartest(A=soep, 
+    xyz <- setNames(llply(.progress = "tk",seq_along(distfuns1), function(g) 
+        setNames(llply(.progress = "text",1:rep, function(z) mvartest(A=soep, 
             B=simlist$rankmatch[[g]][[z]])$p.value),
                  names(A_k))), names(distfuns1))
     return(xyz)
   }
 }  
+
+### convert to dataframe
+
+xyztestdf <- function(data=data, routine=routine, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+    xyzdf <- do.call("cbind",
+               do.call("cbind",
+                lapply(seq_along(list1),
+                  function(t) lapply(seq_along(list2),
+                    function(s) ldply(data[[t]][[s]], .id = NULL)))))
+    return(xyzdf)
+  }else if (routine == "random"){
+    xyzdf <- do.call("cbind",
+              do.call("cbind",
+               lapply(seq_along(list1),
+                function(t) lapply(seq_along(list2),
+                 function(s) ldply(data[[t]][[s]], .id = NULL)))))
+    return(xyzdf)
+  }else if (routine == "rank"){
+    xyzdf <- do.call("cbind",
+               lapply(seq_along(list1),
+                 function(s) ldply(data[[s]], .id = NULL)))
+    return(xyzdf)
+  }
+}
+
+
+
+
+
+
+
