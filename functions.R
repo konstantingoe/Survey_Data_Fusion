@@ -647,7 +647,7 @@ corrtex <- function(data=data, routine = routine ){
       output <- rbind(output, test0[i,])
       output <- rbind(output, test1[i,])
     }
-    #rownames(output) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
+ #rownames(e) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
     return(output)
   }
 }

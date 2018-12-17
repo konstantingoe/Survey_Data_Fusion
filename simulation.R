@@ -166,7 +166,7 @@ simlist <- list("distancematch" = distancematch , "randommatch" = randommatch, "
 
 save(simlist, file= "simulation_fused.RDA")
 
-#load("simulation_fused.RDA")
+load("simulation_fused.RDA")
 ##### 4th level ######
 ksB <- select(B, one_of(xz.vars))
 xzlist <- list("pension" = xz.vars[1], "birthyear" = xz.vars[2], "unemplben" = xz.vars[3],
@@ -239,14 +239,14 @@ distcorrchoice <- corrtex(data = select(distcorrmean, contains("income")), routi
 randcorrchoice <- corrtex(data = select(randomcorrmean, contains("income")), routine = "random")
 rankcorrchoice <- select(as.data.frame(corrtex(data = rankcorrmean, routine = "rank")), contains("income"))
 
-#little workaround for the presentation
+#little workaround
 a <- t(rankcorrchoice)
 b <- cbind(a[,1], a[,3])
 c <-  cbind(a[,2], a[,4])
 e <-  NULL
  for (i in 1:nrow(b)){
-  e <- rbind(e, b[i,])
-  e <- rbind(e, c[i,])
+  e <- as.matrix(rbind(e, b[i,]))
+  e <- as.matrix(rbind(e, c[i,]))
  }
 rownames(e) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
 colnames(e) <- c("Hungarian", "LpSolve")

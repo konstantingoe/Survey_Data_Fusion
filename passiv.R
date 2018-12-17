@@ -27,8 +27,14 @@ vskt.mp <- vskt.mp %>%
   mutate(soep=0)
 
 
-
 (X.vars <- intersect(names(soep.mp), names(vskt.mp)))
+
+#choose subsection of variables on which to display descriptive statistics
+
+vskt.tex <- select(vskt.mp, one_of(c("rente_2015_gesamt", "expunempl", "unempben", "exp_arbeit", "age", "brutto_zens_2015", "sex", "divorced")))
+stargazer(vskt.tex, out = "descriptives_sapa.tex", title = "Chosen descriptive statistics of the passive SAPA sample in 2015 with historic information",
+          digits = 0, notes = "Author's calculations based on SAPA 2002, 2003-2015 passive West German population", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "tablepassive", notes.align = "l", summary.logical=T)
+
 
 #SOEP
 forestSOEP <- randomForest(factor(education, ordered = T) ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = soep.mp, importance = T, corr.bias = T)
