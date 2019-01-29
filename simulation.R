@@ -181,26 +181,22 @@ ksfusedrank <- KS.match(routine = "rank", list1 = distfuns1, out = "statistic")
 
 kslist <- list("distanceks" = ksfuseddist , "randomks" = ksfusedrandom, "rankks" = ksfusedrank)  
 
-summdist <- ksaggregate(routine = "distance",list1 = distfuns1, list2 = distfuns2)
-summrand <- ksaggregate(routine = "random",list1 = randomfuns1, list2 = randomfuns2)
-summrank <- ksaggregate(routine = "rank",list1 = distfuns1)
-
-distance.output <- kstex(data=summdist, routine = "distance")
-random.output <- kstex(data=summrand, routine = "random")
-rank.output <-  kstex(data=summrank, routine = "rank")
+distance.output <- ksoutput(routine = "distance",  list1 = distfuns1, list2 = distfuns2)
+random.output <- ksoutput(routine = "random",  list1 = randomfuns1, list2 = randomfuns2)
+rank.output <-  ksoutput(routine = "rank",  list1 = distfuns1)
 
 
 # Power of test!
 # divide 1 - number of rejected Null hypothesis by number of tests
 #draw p.value
 ksdistp <- KS.match(routine = "distance", list1 = distfuns1, list2 = distfuns2, out = "p.value")
-ksdistpower <- kspower(routine = "distance", data = ksdistp, list1 = distfuns1, list2 = distfuns2)
+ksdistpower <- kspower(routine = "distance")
 
 ksrandp <- KS.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2, out = "p.value")
-ksrandpower <- kspower(routine = "random", data = ksrandp, list1 = randomfuns1, list2 = randomfuns2)
+ksrandpower <- kspower(routine = "random")
 
 ksrankp <- KS.match(routine = "rank", list1 = distfuns1, out = "p.value")
-ksrankpower <- kspower(routine = "rank", data = ksrankp, list1 = distfuns1)
+ksrankpower <- kspower(routine = "rank")
 
 # latex tables
 
@@ -214,17 +210,8 @@ stargazer(rbind(rank.output,ksrankpower), summary = F, title = "Mean over k Mont
           out = "ksrank.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
 
+###this is correct now
 
-test <- ksoutput(routine = "distance",  list1 = distfuns1, list2 = distfuns2)
-test2 <- ksoutput(routine = "random",  list1 = randomfuns1, list2 = randomfuns2)
-test3 <- ksoutput(routine = "rank",  list1 = distfuns1)
-
-
-#now correct the test power
-
-test11 <- kspower(routine = "random")
-test21 <- kspower(routine = "distance")
-test31 <- kspower(routine = "rank")
 
 #######3rd level:
 #### Correlation matrix #####
