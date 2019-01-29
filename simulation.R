@@ -146,7 +146,7 @@ fraction <- nrow(soep) / nrow(vskt.mp)
 # need function that draws random sample from A, 10.000 times and performs all sorts of matching on each of those samples and stores them in a list
 
 # 3 repetitions:
-rep <- 100
+rep <- 1000
 A_k <- as.list.data.frame(replicate(rep, sample_frac(A, fraction, replace = F), simplify = F))
 names(A_k) <- 1:rep
 
@@ -212,6 +212,19 @@ stargazer(rbind(random.output,ksrandpower), summary = F, title = "Mean over k Mo
 
 stargazer(rbind(rank.output,ksrankpower), summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Rank Hot Deck Matching routines",
           out = "ksrank.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
+
+
+
+test <- ksoutput(routine = "distance",  list1 = distfuns1, list2 = distfuns2)
+test2 <- ksoutput(routine = "random",  list1 = randomfuns1, list2 = randomfuns2)
+test3 <- ksoutput(routine = "rank",  list1 = distfuns1)
+
+
+#now correct the test power
+
+test11 <- kspower(routine = "random")
+test21 <- kspower(routine = "distance")
+test31 <- kspower(routine = "rank")
 
 #######3rd level:
 #### Correlation matrix #####
