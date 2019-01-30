@@ -198,6 +198,10 @@ ksrandpower <- kspower(routine = "random")
 ksrankp <- KS.match(routine = "rank", list1 = distfuns1, out = "p.value")
 ksrankpower <- kspower(routine = "rank")
 
+
+
+
+
 # latex tables
 
 stargazer(rbind(distance.output,ksdistpower), summary = F, title = "Mean over 100 Monte Carlo draws of Kolmogorov-Smirnov distance for Distance Hot Deck Matching routines",
@@ -231,44 +235,28 @@ correrank <- montecarlocorr(routine = "rank", list1 = distfuns1)
 
 corrlist <- list("distancecorr" = corredist , "randomcorr" = correrandom, "rankcorr" = correrank) 
 
-distcorrmean <- corraggregate(routine = "distance", list1 = distfuns1, list2 = distfuns2)
-randomcorrmean <- corraggregate(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
-rankcorrmean <- corraggregate(routine = "rank", list1 = distfuns1)
-
-distcorrchoice <- corrtex(data = select(distcorrmean, contains("income")), routine = "distance")
-randcorrchoice <- corrtex(data = select(randomcorrmean, contains("income")), routine = "random")
-rankcorrchoice <- select(as.data.frame(corrtex(data = rankcorrmean, routine = "rank")), contains("income"))
-
-#little workaround
-a <- t(rankcorrchoice)
-b <- cbind(a[,1], a[,3])
-c <-  cbind(a[,2], a[,4])
-e <-  NULL
- for (i in 1:nrow(b)){
-  e <- as.matrix(rbind(e, b[i,]))
-  e <- as.matrix(rbind(e, c[i,]))
- }
-rownames(e) <- c("Corr(Income,Pension)", "", "Corr(Income,Birthyear)", "", "Corr(Income,Unempben", "", "Corr(Income,Workexp)","","Corr(Income,Unempexp)","", "Corr(Income,Education)", "")
-colnames(e) <- c("Hungarian", "LpSolve")
-
+# create output table
+distcorroutput <- corroutput(routine = "distance", list1 = distfuns1, list2 = distfuns2)
+randomcorroutput <- corroutput(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
+rankcorrmeanoutput <- corroutput(routine = "rank", list1 = distfuns1)
 
 # Power of test!
-# divide 1 - number of rejected Null hypothesis by number of tests
+# divide 1 - number of rejected Null hypothesis by number of tests in each coefficient and the weighted average!
 #draw p.value
-corrdistpower <- corrpower(routine = "distance", data = corredist, list1 = distfuns1, list2 = distfuns2)
-corrrandpower <- corrpower(routine = "random", data = correrandom, list1 = randomfuns1, list2 = randomfuns2)
-corrrankpower <- corrpower(routine = "rank", data = correrank, list1 = distfuns1)
+corrdistpower <- corrpower(routine = "distance")
+corrrandpower <- corrpower(routine = "random")
+corrrankpower <- corrpower(routine = "rank")
 
 
 # latex tables
 
-stargazer(rbind(distcorrchoice,corrdistpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Distance Hot Deck Matching routines",
+stargazer(rbind(distcorroutput,corrdistpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Distance Hot Deck Matching routines",
           out = "corrdist.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
-stargazer(rbind(randcorrchoice,corrrandpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Random Distance Hot Deck Matching routines",
+stargazer(rbind(randomcorroutput,corrrandpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Random Distance Hot Deck Matching routines",
           out = "corrrand.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
-stargazer(rbind(e,corrrankpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Rank Hot Deck Matching routines",
+stargazer(rbind(rankcorrmeanoutput,corrrankpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Rank Hot Deck Matching routines",
           out = "corrrank.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
 
