@@ -199,9 +199,6 @@ ksrankp <- KS.match(routine = "rank", list1 = distfuns1, out = "p.value")
 ksrankpower <- kspower(routine = "rank")
 
 
-
-
-
 # latex tables
 
 stargazer(rbind(distance.output,ksdistpower), summary = F, title = "Mean over 100 Monte Carlo draws of Kolmogorov-Smirnov distance for Distance Hot Deck Matching routines",
@@ -246,7 +243,6 @@ rankcorrmeanoutput <- corroutput(routine = "rank", list1 = distfuns1)
 corrdistpower <- corrpower(routine = "distance")
 corrrandpower <- corrpower(routine = "random")
 corrrankpower <- corrpower(routine = "rank")
-
 
 # latex tables
 
