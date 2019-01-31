@@ -6,9 +6,7 @@ source(".path.R")
 
 
 soep.mp <- import(paste(path, "soep_passive_ges.dta" , sep = "/"), setclass = "data.table")
-
 vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass = "data.table")
-
 
 soep.mp <- soep.mp %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
@@ -24,14 +22,19 @@ vskt.mp <- vskt.mp %>%
   mutate(expunempl = exp_al_20_bis2015) %>% 
   mutate(unempben = alg_j_2015) %>% 
   mutate(age = 2015 -gbja) %>% 
-  mutate(soep=0)
+  mutate(soep=0) %>% 
+  mutate(ltearnings = npv_1760_r_net)
+
+#take maximum over alg_j_2015 since first observation like is SOEP stupid!!!
+
+vskt.mp <- select(vskt.mp, one_of(c("case","sex", "gbja", "weight", "rente_2015_gesamt", "unempben", "expunempl", "divorced", "expwork", "ltearnings", "age", "soep")))
 
 
 (X.vars <- intersect(names(soep.mp), names(vskt.mp)))
 
 #choose subsection of variables on which to display descriptive statistics
 
-vskt.tex <- select(vskt.mp, one_of(c("rente_2015_gesamt", "expunempl", "unempben", "exp_arbeit", "age", "brutto_zens_2015", "sex", "divorced")))
+vskt.tex <- select(vskt.mp, one_of(c("rente_2015_gesamt", "expunempl", "unempben", "expwork", "age", "brutto_zens_2015", "sex", "divorced", "ltearnings")))
 stargazer(vskt.tex, out = "descriptives_sapa.tex", title = "Chosen descriptive statistics of the passive SAPA sample in 2015 with historic information",
           digits = 0, notes = "Author's calculations based on SAPA 2002, 2003-2015 passive West German population", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "tablepassive", notes.align = "l", summary.logical=T)
 
@@ -40,19 +43,49 @@ stargazer(vskt.tex, out = "descriptives_sapa.tex", title = "Chosen descriptive s
 forestSOEP <- randomForest(factor(education, ordered = T) ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = soep.mp, importance = T, corr.bias = T)
 
 pdf('forestSOEPpassiv.pdf',height=4, width=6)
-varImpPlot(forestSOEP,type=2, main = c("Random Forest Importance Plot", "für Variablenselektion im SOEP"))
+varImpPlot(forestSOEP,type=2, main = "")
 dev.off()
 (VI_FA <- importance(forestSOEP, type=2, scale = F))
 barplot(t(VI_FA/sum(VI_FA)))
 
 #VSKT
-forestVSKT <- randomForest(brutto_zens_2015 ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = vskt.mp, importance = T, corr.bias = T)
+forestVSKT <- randomForest(ltearnings ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = vskt.mp, importance = T, corr.bias = T)
 pdf('forestVSKTpassiv.pdf',height=4, width=6)
-varImpPlot(forestVSKT,type=2, main = c("Random Forest Importance Plot" ,"für Variablenselektion in der VSKT"))
+varImpPlot(forestVSKT,type=2, main = "")
 dev.off()
 (VI_FB <- importance(forestVSKT, type=2, scale = F))
 
 barplot(t(VI_FB/sum(VI_FB)))
+
+#choose set of matchingvariables:
+#one could discuss whether uneployment benefits should be left out... leave it for now and check X_M quality
+X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
+donclass <- c("sex", "divorced")
+
+# Hellinger Distance for matching variable quality
+A.mtc <- select(soep.mp, one_of(X.mtc))
+B.mtc <- select(vskt.mp, one_of(X.mtc))
+
+helldist <- unlist(nullToNA(sapply(X.mtc, function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,y], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))))
+
+#uneployment benefits and experience in unemployment have too many zeros...integral not calculable
+#take only positive values and use those... note that we ommit the number of zeros, which could be potentially different
+sum(A.mtc$expunempl==0)/nrow(A.mtc) # 75% in the passive SOEP population have never been unemployed
+sum(B.mtc$expunempl==0)/nrow(B.mtc) # 48% in the SAPA have never been unemployed
+
+sum(A.mtc$unempben==0)/nrow(A.mtc) # 86% in the SOEP have never received unemployment benefits
+sum(B.mtc$unempben==0) / nrow(B.mtc) # 52% in the SAPA
+
+
+test1 <- filter(A.mtc, A.mtc$expunempl>0)
+test2 <- filter(B.mtc, B.mtc$expunempl>0)
+
+test <- hellinger(test1$expunempl, test2$expunempl, method = 1)
+
+test3 <- filter(A.mtc, A.mtc$unempben>0)
+test4 <- filter(B.mtc, B.mtc$unempben>0)
+test5 <- hellinger(test3$unempben, test4$unempben, lower = -Inf, upper = Inf, method = 1)
+
 
 
 soep.mp <- soep.mp %>% 
