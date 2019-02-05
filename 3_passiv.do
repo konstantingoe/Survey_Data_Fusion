@@ -116,7 +116,7 @@ lab val sex gender
 recode gbja (1935/1940=40) (1941/1945=45) (1946/1950=50) (1951/1955=55), gen(gbja_cat) 
 
 egen exp_arbeit = rowmax(exp_arbeit*)
-
+egen unempben = rowmax(alg_j_*)
 
 save "${data}vskt_passiv_panel_ges.dta", replace
 ********************************************************************************

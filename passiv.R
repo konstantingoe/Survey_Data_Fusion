@@ -20,7 +20,7 @@ vskt.mp <- vskt.mp %>%
   #mutate(age_g = factor(age_g,ordered = T))
   mutate(expwork = exp_arbeit_20_bis2015) %>% 
   mutate(expunempl = exp_al_20_bis2015) %>% 
-  mutate(unempben = alg_j_2015) %>% 
+  #mutate(unempben = alg_j_2015) %>% 
   mutate(age = 2015 -gbja) %>% 
   mutate(soep=0) %>% 
   mutate(ltearnings = npv_1760_r_net)
