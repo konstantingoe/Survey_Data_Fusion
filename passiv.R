@@ -35,8 +35,17 @@ vskt.mp <- select(vskt.mp, one_of(c("case","sex", "gbja", "weight", "rente_2015_
 #choose subsection of variables on which to display descriptive statistics
 
 vskt.tex <- select(vskt.mp, one_of(c("rente_2015_gesamt", "expunempl", "unempben", "expwork", "age", "brutto_zens_2015", "sex", "divorced", "ltearnings")))
-stargazer(vskt.tex, out = "descriptives_sapa.tex", title = "Chosen descriptive statistics of the passive SAPA sample in 2015 with historic information",
-          digits = 0, notes = "Author's calculations based on SAPA 2002, 2003-2015 passive West German population", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "tablepassive", notes.align = "l", summary.logical=T)
+vskt.tex <- vskt.tex %>% 
+  mutate(female = as.numeric(ifelse(as.numeric(sex)==2,0,1))) %>% 
+  mutate(everdivorced = as.numeric(as.numeric(divorced)==2,0,1)) %>% 
+  mutate(ltearnings = round(ltearnings)) %>% 
+  mutate(rente_2015_gesamt = round(rente_2015_gesamt)) %>% 
+  mutate(unempben = round(unempben))
+
+names(vskt.tex) <- c("Pension Entitl.", "Exp. unempl.","Unempl. benefit", "Exp. empl.", "Age", "sex", "divorced", "Lifetime earnings", "Female", "Ever divorced")
+
+stargazer(vskt.tex, out = "descriptives_VSKT.tex", title = "Chosen descriptive statistics of the passive VSKT sample in 2015 with historic information",
+          digits = 2, notes = "Author's calculations based on VSKT 2002, 2003-2015 passive West German population", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "tablepassive", notes.align = "l", summary.logical=T)
 
 
 #SOEP
@@ -60,6 +69,7 @@ barplot(t(VI_FB/sum(VI_FB)))
 #choose set of matchingvariables:
 #one could discuss whether uneployment benefits should be left out... leave it for now and check X_M quality
 X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
+names(X.mtc) <- c("Pension Entitl.", "Birthyear", "Unempl. benef.", "Working exp." , "Unempl. exp.")
 donclass <- c("sex", "divorced")
 
 # Hellinger Distance for matching variable quality
@@ -68,13 +78,16 @@ B.mtc <- select(vskt.mp, one_of(X.mtc))
 
 helldist <- unlist(nullToNA(sapply(X.mtc, function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,y], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))))
 
+stargazer(helldist, out = "X_m_VSKT_SOEP.tex", title = "Potential set of matching variables with corresponding Hellinger distances",
+          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2003-2015 passive West German population", label = "X_m_application", notes.align = "l")
+
 #uneployment benefits and experience in unemployment have too many zeros...integral not calculable
 #take only positive values and use those... note that we ommit the number of zeros, which could be potentially different
 sum(A.mtc$expunempl==0)/nrow(A.mtc) # 75% in the passive SOEP population have never been unemployed
-sum(B.mtc$expunempl==0)/nrow(B.mtc) # 48% in the SAPA have never been unemployed
+sum(B.mtc$expunempl==0)/nrow(B.mtc) # 48% in the VSKT have never been unemployed
 
 sum(A.mtc$unempben==0)/nrow(A.mtc) # 86% in the SOEP have never received unemployment benefits
-sum(B.mtc$unempben==0) / nrow(B.mtc) # 52% in the SAPA
+sum(B.mtc$unempben==0) / nrow(B.mtc) # 52% in the VSKT
 
 
 test1 <- filter(A.mtc, A.mtc$expunempl>0)

@@ -113,11 +113,14 @@ barplot(t(VI_FB/sum(VI_FB)))
 # divorced is discarded in both variable selection models
 # sex also has very low importance -> take both as don.classes 
 soepdescr <- soep %>% 
-  mutate(age = 2016 -gbja) %>% 
-  select(-persnr, -gbja, -rentenbeginn)
-names(soepdescr) <- c("Gender", "Pension Entitlements", "Exp. unempl.","Unempl. Benefit", "Education", "Income", "Exp. empl.", "Divorced", "Age")
-stargazer(soepdescr, out = "descriptives.tex", title = "Chosen descriptive statistics of the passive SOEP sample in 2016 with historic information",
-          digits = 0, notes = "Author's calculations based on SOEP v.33 passive West German population in 2016.", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "descrtable", notes.align = "l", summary.logical=T)
+  mutate(age = 2015 -gbja) %>% 
+  select(-persnr, -gbja, -rentenbeginn) %>% 
+  mutate(female = as.numeric(ifelse(as.numeric(sex)==2,0,1))) %>% 
+  mutate(everdivorced = as.numeric(as.numeric(divorced)==2,0,1))
+
+names(soepdescr) <- c("sex", "Pension Entitlements", "Education", "Income", "Unempl. Benefit", "Exp. unempl.", "divorced", "Exp. empl.", "Age", "Female", "Ever divorced")
+stargazer(soepdescr, out = "descriptives.tex", title = "Chosen descriptive statistics of the passive SOEP sample in 2015 with historic information",
+          digits = 2, notes = "Author's calculations based on SOEP v.33 passive West German population in 2015.", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "descrtable", notes.align = "l", summary.logical=T)
 
 ##### Perform Matching ####
 # define necessary string values
