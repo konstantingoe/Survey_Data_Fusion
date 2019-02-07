@@ -42,25 +42,24 @@ vskt.tex <- vskt.tex %>%
   mutate(rente_2015_gesamt = round(rente_2015_gesamt)) %>% 
   mutate(unempben = round(unempben))
 
-names(vskt.tex) <- c("Pension Entitl.", "Exp. unempl.","Unempl. benefit", "Exp. empl.", "Age", "sex", "divorced", "Lifetime earnings", "Female", "Ever divorced")
+names(vskt.tex) <- c("Pension entitl.", "Exp. unempl.","Unempl. benefit", "Work exp.", "Age", "sex", "divorced", "Lifetime earnings", "Female", "Ever divorced")
 
 stargazer(vskt.tex, out = "descriptives_VSKT.tex", title = "Chosen descriptive statistics of the passive VSKT sample in 2015 with historic information",
-          digits = 2, notes = "Author's calculations based on VSKT 2002, 2003-2015 passive West German population", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "tablepassive", notes.align = "l", summary.logical=T)
-
+          digits = 2, notes = "Author's calculations based on VSKT 2002, 2004-2015 passive West German population", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "tablepassive", notes.align = "l", summary.logical=T)
 
 #SOEP
-forestSOEP <- randomForest(factor(education, ordered = T) ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = soep.mp, importance = T, corr.bias = T)
+forestSOEP <- randomForest(factor(education, ordered = T) ~ sex + gbja + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = soep.mp, importance = T, corr.bias = T)
 
 pdf('forestSOEPpassiv.pdf',height=4, width=6)
-varImpPlot(forestSOEP,type=2, main = "")
+varImpPlot(forestSOEP,type=2, main = "", labels=c("Gender", "Ever divorced", "Unempl. benefit", "Exp. unempl.", "YoB", "Work exp.", "Pension entitl." ))
 dev.off()
 (VI_FA <- importance(forestSOEP, type=2, scale = F))
 barplot(t(VI_FA/sum(VI_FA)))
 
 #VSKT
-forestVSKT <- randomForest(ltearnings ~ sex + age + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = vskt.mp, importance = T, corr.bias = T)
+forestVSKT <- randomForest(ltearnings ~ sex + gbja + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = vskt.mp, importance = T, corr.bias = T)
 pdf('forestVSKTpassiv.pdf',height=4, width=6)
-varImpPlot(forestVSKT,type=2, main = "")
+varImpPlot(forestVSKT,type=2, main = "", labels = c("Ever divorce", "Exp. unempl.", "Unempl. benefit", "YoB", "Gender", "Pension entitl.", "Work exp."))
 dev.off()
 (VI_FB <- importance(forestVSKT, type=2, scale = F))
 
@@ -69,7 +68,7 @@ barplot(t(VI_FB/sum(VI_FB)))
 #choose set of matchingvariables:
 #one could discuss whether uneployment benefits should be left out... leave it for now and check X_M quality
 X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
-names(X.mtc) <- c("Pension Entitl.", "Birthyear", "Unempl. benef.", "Working exp." , "Unempl. exp.")
+names(X.mtc) <- c("Pension entitl.", "YoB", "Unempl. benef.", "Work exp." , "Exp. unempl.")
 donclass <- c("sex", "divorced")
 
 # Hellinger Distance for matching variable quality
@@ -79,25 +78,22 @@ B.mtc <- select(vskt.mp, one_of(X.mtc))
 helldist <- unlist(nullToNA(sapply(X.mtc, function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,y], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))))
 
 stargazer(helldist, out = "X_m_VSKT_SOEP.tex", title = "Potential set of matching variables with corresponding Hellinger distances",
-          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2003-2015 passive West German population", label = "X_m_application", notes.align = "l")
+          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population", label = "X_m_application", notes.align = "l")
 
 #uneployment benefits and experience in unemployment have too many zeros...integral not calculable
 #take only positive values and use those... note that we ommit the number of zeros, which could be potentially different
-sum(A.mtc$expunempl==0)/nrow(A.mtc) # 75% in the passive SOEP population have never been unemployed
-sum(B.mtc$expunempl==0)/nrow(B.mtc) # 48% in the VSKT have never been unemployed
+sum(A.mtc$expunempl>0)/nrow(A.mtc) # 75% in the passive SOEP population have never been unemployed
+sum(B.mtc$expunempl>0)/nrow(B.mtc) # 48% in the VSKT have never been unemployed
+#this could be improved by going to spell data and not use the readily generated variables... but hopes are low that this would improve the analysis!
 
-sum(A.mtc$unempben==0)/nrow(A.mtc) # 86% in the SOEP have never received unemployment benefits
-sum(B.mtc$unempben==0) / nrow(B.mtc) # 52% in the VSKT
-
+sum(A.mtc$unempben>0)/ sum(A.mtc$expunempl>0) 
+#only 55% of individualy with unemployment spells in the SOEP also report unemployment benefits
+sum(B.mtc$unempben>0) / sum(B.mtc$expunempl>0) 
+#97% in the VSKT who experienced unemployment spells also report unemployment benefits
 
 test1 <- filter(A.mtc, A.mtc$expunempl>0)
 test2 <- filter(B.mtc, B.mtc$expunempl>0)
-
 test <- hellinger(test1$expunempl, test2$expunempl, method = 1)
-
-test3 <- filter(A.mtc, A.mtc$unempben>0)
-test4 <- filter(B.mtc, B.mtc$unempben>0)
-test5 <- hellinger(test3$unempben, test4$unempben, lower = -Inf, upper = Inf, method = 1)
 
 
 

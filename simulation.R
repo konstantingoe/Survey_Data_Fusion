@@ -87,7 +87,7 @@ eta.fcn(step.glm.modelB)
 forestA <- randomForest(factor(education, ordered = T) ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = A, importance = T, corr.bias = T)
 
 pdf('forestA.pdf',height=4, width=6)
-varImpPlot(forestA,type=2, main = "")
+varImpPlot(forestA,type=2, main = "", labels=c("Gender", "Ever divorced", "Unempl. benefit", "Exp. unempl.", "YoB", "Work exp.", "Pension entitl."))
 dev.off()
 
 (VI_FA <- importance(forestA, type=2, scale = F))
@@ -103,7 +103,7 @@ barplot(t(VI_FA/sum(VI_FA)))
 
 forestB <- randomForest(income ~ sex + gbja + rente_2015_gesamt + expwork + expunempl + unempben + divorced , data = B,importance = T, corr.bias = T)
 pdf('forestB.pdf',height=4, width=6)
-varImpPlot(forestB,type=2, main = "")
+varImpPlot(forestB,type=2, main = "", label = c("Ever divorced", "Gender", "Exp. unempl.", "Unempl. benefit", "Yob", "Work exp.", "Pension entitl."))
 dev.off()
 
 (VI_FB <- importance(forestB, type=2, scale = F))
@@ -118,7 +118,7 @@ soepdescr <- soep %>%
   mutate(female = as.numeric(ifelse(as.numeric(sex)==2,0,1))) %>% 
   mutate(everdivorced = as.numeric(as.numeric(divorced)==2,0,1))
 
-names(soepdescr) <- c("sex", "Pension Entitlements", "Education", "Income", "Unempl. Benefit", "Exp. unempl.", "divorced", "Exp. empl.", "Age", "Female", "Ever divorced")
+names(soepdescr) <- c("sex", "Pension entitlements", "Education", "Income", "Unempl. benefit", "Exp. unempl.", "divorced", "Work exp.", "Age", "Female", "Ever divorced")
 stargazer(soepdescr, out = "descriptives.tex", title = "Chosen descriptive statistics of the passive SOEP sample in 2015 with historic information",
           digits = 2, notes = "Author's calculations based on SOEP v.33 passive West German population in 2015.", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "descrtable", notes.align = "l", summary.logical=T)
 
