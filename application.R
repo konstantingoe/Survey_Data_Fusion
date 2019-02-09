@@ -4,9 +4,12 @@ source("packages.R")
 source("functions.R")
 source(".path.R")
 
+##### Initiate #####
 
+#load SOEP and VSKT
 soep.mp <- import(paste(path, "soep_passive_ges.dta" , sep = "/"), setclass = "data.table")
 vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass = "data.table")
+
 
 soep.mp <- soep.mp %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
@@ -23,11 +26,11 @@ vskt.mp <- vskt.mp %>%
 #select most interesting VSKT variables... can be remerged by case id 
 vskt.mp <- select(vskt.mp, one_of(c("case","sex", "gbja", "weight", "rente_2015_gesamt", "unempben", "expunempl", "divorced", "expwork", "ltearnings", "age", "soep")))
 
-
+#select jointly observed variables
 (X.vars <- intersect(names(soep.mp), names(vskt.mp)))
 
-#choose subsection of variables on which to display descriptive statistics
 
+#choose subsection of variables on which to display descriptive statistics
 vskt.tex <- select(vskt.mp, one_of(c("rente_2015_gesamt", "expunempl", "unempben", "expwork", "age", "brutto_zens_2015", "sex", "divorced", "ltearnings")))
 vskt.tex <- vskt.tex %>% 
   mutate(female = as.numeric(ifelse(as.numeric(sex)==2,0,1))) %>% 
@@ -36,34 +39,36 @@ vskt.tex <- vskt.tex %>%
   mutate(rente_2015_gesamt = round(rente_2015_gesamt)) %>% 
   mutate(unempben = round(unempben))
 
+#Latex tables
 names(vskt.tex) <- c("Pension entitl.", "Exp. unempl.","Unempl. benefit", "Work exp.", "Age", "sex", "divorced", "Lifetime earnings", "Female", "Ever divorced")
-
 stargazer(vskt.tex, out = "descriptives_VSKT.tex", title = "Chosen descriptive statistics of the passive VSKT sample in 2015 with historic information",
           digits = 2, notes = "Author's calculations based on VSKT 2002, 2004-2015 passive West German population", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "tablepassive", notes.align = "l", summary.logical=T)
 
-#SOEP
-forestSOEP <- randomForest(factor(education, ordered = T) ~ sex + gbja + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = soep.mp, importance = T, corr.bias = T)
 
+#### Random Forests #####
+
+#SOEP classification tree for variable importance
+forestSOEP <- randomForest(factor(education, ordered = T) ~ sex + gbja + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = soep.mp, importance = T, corr.bias = T)
 pdf('forestSOEPpassiv.pdf',height=4, width=6)
 varImpPlot(forestSOEP,type=2, main = "", labels=c("Gender", "Ever divorced", "Unempl. benefit", "Exp. unempl.", "YoB", "Work exp.", "Pension entitl." ))
 dev.off()
 (VI_FA <- importance(forestSOEP, type=2, scale = F))
 barplot(t(VI_FA/sum(VI_FA)))
 
-#VSKT
+#VSKT regression tree for variable importance 
 forestVSKT <- randomForest(ltearnings ~ sex + gbja + rente_2015_gesamt + expunempl + expwork + unempben + divorced, data = vskt.mp, importance = T, corr.bias = T)
 pdf('forestVSKTpassiv.pdf',height=4, width=6)
 varImpPlot(forestVSKT,type=2, main = "", labels = c("Ever divorce", "Exp. unempl.", "Unempl. benefit", "YoB", "Gender", "Pension entitl.", "Work exp."))
 dev.off()
 (VI_FB <- importance(forestVSKT, type=2, scale = F))
-
 barplot(t(VI_FB/sum(VI_FB)))
 
+#### Matching variable quality ####
+
 #choose set of matchingvariables:
-#one could discuss whether uneployment benefits should be left out... leave it for now and check X_M quality
+#one could discuss whether uneployment benefits should be left out... keep it for now and check X_M quality
 X.mtc <- c("rente_2015_gesamt","gbja" , "unempben", "expwork", "expunempl")
 names(X.mtc) <- c("Pension entitl.", "YoB", "Unempl. benef.", "Work exp." , "Exp. unempl.")
-donclass <- c("sex", "divorced")
 
 # Hellinger Distance for matching variable quality
 A.mtc <- select(soep.mp, one_of(X.mtc))
@@ -71,31 +76,34 @@ B.mtc <- select(vskt.mp, one_of(X.mtc))
 
 helldist <- unlist(nullToNA(sapply(X.mtc, function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,y], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))))
 
+#Latex table
 stargazer(helldist, out = "X_m_VSKT_SOEP.tex", title = "Potential set of matching variables with corresponding Hellinger distances",
           digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population", label = "X_m_application", notes.align = "l")
 
-# Experience in unemployment has too many zeros...integral not calculable
-#take only positive values and use those... note that we ommit the number of zeros, which could be potentially different
+#check unemployment shares:
 sum(A.mtc$expunempl>0)/nrow(A.mtc) # 75% in the passive SOEP population have never been unemployed
 sum(B.mtc$expunempl>0)/nrow(B.mtc) # 48% in the VSKT have never been unemployed
-#this could be improved by going to spell data and not use the readily generated variables... but hopes are low that this would improve the analysis!
 
-sum(A.mtc$unempben>0)/ sum(A.mtc$expunempl>0) 
-#only 55% of individualy with unemployment spells in the SOEP also report unemployment benefits
-sum(B.mtc$unempben>0) / sum(B.mtc$expunempl>0) 
-#97% in the VSKT who experienced unemployment spells also report unemployment benefits
+sum(A.mtc$unempben>0)/ sum(A.mtc$expunempl>0) #only 55% of individualy with unemployment spells in the SOEP also report unemployment benefits
+sum(B.mtc$unempben>0) / sum(B.mtc$expunempl>0) #97% in the VSKT who experienced unemployment spells also report unemployment benefits
 
+#Experience in unemployment has too many zeros...integral not calculable
+#take only positive values and use those... note that we ommit the number of zeros, which could be potentially different
 temp1 <- filter(A.mtc, A.mtc$expunempl>0)
 temp2 <- filter(B.mtc, B.mtc$expunempl>0)
 temp3 <- hellinger(test1$expunempl, test2$expunempl, method = 1)
 
-(X.mtc.final <- c("rente_2015_gesamt", "gbja", "expwork", "expunempl"))
-(Z.vars <- setdiff(names(vskt.mp), names(soep.mp))) # available just in VSKT
-(donclass <- c("divorced","sex"))
+##### Prepare for matching #####
+
+(X.mtc.final <- c("rente_2015_gesamt", "gbja", "expwork", "expunempl")) #final X_M
+(Z.vars <- setdiff(names(vskt.mp), names(soep.mp))) #available just in VSKT
+(donclass <- c("divorced","sex")) #donation classes
 
 distancematch <- distancehd(A=soep.mp, B=vskt.mp, distfun = "minimax") 
 randommatch <- randomhd(A=soep.mp, B=vskt.mp, distfun = "ANN", cutdon="rot", weight = "weight") 
 randommatch_unwgt <- randomhd(A=soep.mp, B=vskt.mp, distfun = "ANN", cutdon="rot") 
+
+#### Post-matching diagnostics: level 4 #####
 
 xz.vars <- c(X.mtc, "brutto_zens_2013", "brutto_zens_2014", "brutto_zens_2015")
 xz.varsl <- as.list(c(X.mtc, "brutto_zens_2013", "brutto_zens_2014", "brutto_zens_2015"))
@@ -130,10 +138,12 @@ stargazer(hellingerdf, summary = F, title = "Hellinger Distanzen für die Mathch
           notes = "Eigene Berechnungen auf Basis des SOEP v.32 und der VSKT; Für Hellinger Distanzen unter dem Wert 0.05 kann von Gleichheit der Verteilungen ausgegangen werden",
           notes.align = "l")
 
+#### Deploy final use file ####
+
 save(randommatch, file="passive_match_weighted.RDA")
 write.dta(randommatch, file = "passive_match_weighted.dta")
 
-
+#### Finished #####
 
 
 

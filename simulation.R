@@ -7,18 +7,15 @@ source(".path.R")
  
 set.seed(1234)
 
-
+#load SOEP and VSKT
 soep <- import(paste(path, "soep_passive_ges.dta" , sep = "/"), setclass = "data.table")
 vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass = "data.table")
 
 # perform simulation on the basis of soep
 # for this use soep twice delete in each set variables and keep X as common variables
-# then take data set A and randomly drop 2/3 of the data... then match the full dataset B with 
+# then take data set A and randomly drop nrow(soep)/nrow(vskt.mp) of the data... then match the full dataset B with 
 # (X,Z) onto the smaller data set A with (X,Y).
-# repeat this 10.000 times!
-
-#possibly divide script into part that is fix and part that relies on simulation:
-
+# repeat this 1.000 times!
 
 #### Sample Selection ####
 
@@ -26,16 +23,16 @@ soep <- soep %>%
   mutate(gbja_cat = factor(gbja_cat, ordered = T)) %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
   mutate(divorced = factor(divorced, ordered = F)) %>% 
-  select(-gbja_cat, - pwgt) # not useful here for retired population
+  select(-gbja_cat, - pwgt) #not useful here for retired population
 
 # CIA assumption
 CItest <- ci.test(x = "income", y = "education", z = c("sex","gbja", "rente_2015_gesamt","expunempl", "unempben" ,"expwork" , "divorced"), data = soep, test = "mi-cg")
 # does not hold!
 
-#create A and B
+#### Create A and B ####
 
-A <- select(soep, -income)
-B <- select(soep, -education)
+A <- select(soep, -income) #drop out income
+B <- select(soep, -education) #drop out education
 
 A <- A %>% 
   mutate(a=1)
@@ -44,22 +41,18 @@ B <- B %>%
   mutate(a=0) %>% 
   mutate(persnrB = persnr)
 
-
-##### Checking densities #####
+#####  Graphically Checking densities #####
 joint <- bind_rows(A, B)
 joint <- joint %>% 
   mutate(a = factor(a, ordered = F))
-
 
 #(birthplot <- mydensplot.sim(joint, "gbja", xname = "Geburtskohorte"))
 #(kstest.gbja <- ks.test(A$gbja, B$gbja, alternative = "two.sided"))
 #works perfectly cannot reject H0 that both come from the same distribution
 
-# At this stage, since the population equality assumption is not a problem 
-# anymore it might be sensical to fit a regression tree in order to check 
-# which matching variables to use:
+#### Variable importance evaluation ####
 
-# two-step procedure:
+#two-step procedure:
 
 #1st step: check linear models
 
@@ -81,6 +74,7 @@ step.glm.modelB$anova
 eta.fcn(step.glm.modelB)
 
 #2nd step: nonlinear regression tools
+
 ##### Fitting Random forest #####
 
 #for A
@@ -112,12 +106,14 @@ barplot(t(VI_FB/sum(VI_FB)))
 
 # divorced is discarded in both variable selection models
 # sex also has very low importance -> take both as don.classes 
+
 soepdescr <- soep %>% 
   mutate(age = 2015 -gbja) %>% 
   select(-persnr, -gbja, -rentenbeginn) %>% 
   mutate(female = as.numeric(ifelse(as.numeric(sex)==2,0,1))) %>% 
   mutate(everdivorced = as.numeric(as.numeric(divorced)==2,0,1))
 
+#Latex tables
 names(soepdescr) <- c("sex", "Pension entitlements", "Education", "Income", "Unempl. benefit", "Exp. unempl.", "divorced", "Work exp.", "Age", "Female", "Ever divorced")
 stargazer(soepdescr, out = "descriptives.tex", title = "Chosen descriptive statistics of the passive SOEP sample in 2015 with historic information",
           digits = 2, notes = "Author's calculations based on SOEP v.33 passive West German population in 2015.", summary.stat = c("n", "mean","sd", "median", "min", "max"), label = "descrtable", notes.align = "l", summary.logical=T)
@@ -144,11 +140,10 @@ A <- A %>%
   select(-a)
 
 ##### simulation starts here ######
+
 fraction <- nrow(soep) / nrow(vskt.mp) 
 
-# need function that draws random sample from A, 10.000 times and performs all sorts of matching on each of those samples and stores them in a list
-
-# 3 repetitions:
+#1000 repetitions: set this lower for test run!
 rep <- 1000
 A_k <- as.list.data.frame(replicate(rep, sample_frac(A, fraction, replace = F), simplify = F))
 names(A_k) <- 1:rep
@@ -169,14 +164,15 @@ simlist <- list("distancematch" = distancematch , "randommatch" = randommatch, "
 
 save(simlist, file= "simulation_fused.RDA")
 
-load("simulation_fused.RDA")
+#load("simulation_fused.RDA")
+
 ##### 4th level ######
 ksB <- select(B, one_of(xz.vars))
 xzlist <- list("pension" = xz.vars[1], "birthyear" = xz.vars[2], "unemplben" = xz.vars[3],
                "workexp" = xz.vars[4], "unempexp" = xz.vars[5], "income" = xz.vars[6])
 
-# for distance just use out = "statistic" which is the ks.distance!
-# and compare actual fit via kolmogorov-smirnov distance
+#for distance just use out = "statistic" which is the ks.distance!
+#and compare actual fit via kolmogorov-smirnov distance
 
 ksfuseddist <- KS.match(routine = "distance", list1 = distfuns1, list2 = distfuns2, out = "statistic")
 ksfusedrandom <- KS.match(routine = "random", list1 = randomfuns1, list2 = randomfuns2, out = "statistic")
@@ -189,8 +185,9 @@ random.output <- ksoutput(routine = "random",  list1 = randomfuns1, list2 = rand
 rank.output <-  ksoutput(routine = "rank",  list1 = distfuns1)
 
 
-# Power of test!
-# divide 1 - number of rejected Null hypothesis by number of tests
+#Power of test:
+#divide 1 - number of rejected Null hypothesis by number of tests as average over routines
+
 #draw p.value
 ksdistp <- KS.match(routine = "distance", list1 = distfuns1, list2 = distfuns2, out = "p.value")
 ksdistpower <- kspower(routine = "distance")
@@ -202,8 +199,7 @@ ksrankp <- KS.match(routine = "rank", list1 = distfuns1, out = "p.value")
 ksrankpower <- kspower(routine = "rank")
 
 
-# latex tables
-
+#latex tables
 stargazer(rbind(distance.output,ksdistpower), summary = F, title = "Mean over 100 Monte Carlo draws of Kolmogorov-Smirnov distance for Distance Hot Deck Matching routines",
           out = "ksdist.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
@@ -213,12 +209,8 @@ stargazer(rbind(random.output,ksrandpower), summary = F, title = "Mean over k Mo
 stargazer(rbind(rank.output,ksrankpower), summary = F, title = "Mean over k Monte Carlo draws of Kolmogorov-Smirnov distance for Rank Hot Deck Matching routines",
           out = "ksrank.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
-
-###this is correct now
-
-
-#######3rd level:
-#### Correlation matrix #####
+##### 3rd level ##### 
+#Correlation matrices:
 
 xyz.vars <- c(X.mtc, Y.vars, "income" )
 corrmatfull <- cor(select(soep, one_of(xyz.vars)))
@@ -240,7 +232,7 @@ distcorroutput <- corroutput(routine = "distance", list1 = distfuns1, list2 = di
 randomcorroutput <- corroutput(routine = "random", list1 = randomfuns1, list2 = randomfuns2)
 rankcorrmeanoutput <- corroutput(routine = "rank", list1 = distfuns1)
 
-# Power of test!
+# Power of test again
 # divide 1 - number of rejected Null hypothesis by number of tests in each coefficient and the weighted average!
 #draw p.value
 corrdistpower <- corrpower(routine = "distance")
@@ -248,7 +240,6 @@ corrrandpower <- corrpower(routine = "random")
 corrrankpower <- corrpower(routine = "rank")
 
 # latex tables
-
 stargazer(rbind(distcorroutput,corrdistpower), summary = F, title = "Mean over k Monte Carlo draws of Fischer's Correlation test for Distance Hot Deck Matching routines",
           out = "corrdist.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
@@ -259,11 +250,9 @@ stargazer(rbind(rankcorrmeanoutput,corrrankpower), summary = F, title = "Mean ov
           out = "corrrank.tex", colnames = T, digits = 3, digits.extra = 3, flip = F, initial.zero = T, multicolumn = T, rownames =T, perl=T)
 
 
+#### 2nd level ####
 
-######2nd level:
-
-#takes a long long time!
-# but works great!
+#Remark: Computational intensive 
 
 xyztestdist <- xyz.match(routine = "distance", list1 = distfuns1, list2 = distfuns2)
 save(xyztestdist, file = "cramerdist.RDA")
@@ -271,6 +260,8 @@ xyztestrand <- xyz.match(routine = "random", list1 = randomfuns1, list2 = random
 save(xyztestrand, file = "cramerrand.RDA")
 xyztestrank <- xyz.match(routine = "rank", list1 = distfuns1)
 save(xyztestrank, file = "cramerrank.RDA")
+
+#data frame and latex tables:
 
 xyztestdistdf <- xyztestdf(data =xyztestdist, routine = "distance", list1 = distfuns1, list2 = distfuns2)
 names(xyztestdistdf) <- c("HUmahalanobis", "HUminimax", "HUgower","lpmahalanobis", "lpminimax", "lpgower")
@@ -291,13 +282,14 @@ disttestpower <- t(rowSums(t(as.matrix(xyztestdistdf)) >pvalue) / rep)
 randtestpower <- t(rowSums(t(as.matrix(xyztestranddf)) >pvalue) / rep)
 ranktestpower <- t(rowSums(t(as.matrix(xyztestrankdf)) >pvalue) / rep)
 
-# done:
-# then aggregate and report thats it
+#### Simulation finishes here ####
 
-##### 1st evaluation level ####
+
+##### 1st level ####
+# not used because not useful for application
+
 #order by persnr and persnrB then create indicator variable which is one if two variables are different
 arrange(fused32, persnr, persnrB)
-
 eval <- fused32$persnr == fused32$persnrB
 # choose smallest FALSE!
 firstlevel32 <- table(eval)

@@ -1,6 +1,6 @@
+#### Functions for wrangling ####
 
-#### Functions for wrangling
-
+#clear lables
 clear.labels <- function(x) {
   if(is.list(x)) {
     for(i in 1 : length(x)) class(x[[i]]) <- setdiff(class(x[[i]]), 'labelled') 
@@ -13,16 +13,16 @@ clear.labels <- function(x) {
   return(x)
 }
 
+
+#transform to numeric
 asNumeric <- function(x) as.numeric(as.character(x))
 factorsNumeric <- function(d) modifyList(d, lapply(d[, sapply(d, is.factor)],   
                                                    asNumeric))
 
 
-###------------------- Functions for Matching -----------------------###
+##### Functions for Matching #####
 
-# Density comparison
-
-
+#Graphical density comparison
 mydensplot <- function(data, xvar, xname=xname, weight=NULL, lmts = NULL){
   data %>% 
     ggplot() +
@@ -55,10 +55,6 @@ mydistplot <- function(data, xvar, xname=xname){
     scale_colour_manual("Datensatz", labels= c("VSKT","SOEP"),values = c("gold","turquoise4")) 
 }
 
-
-
-
-
 mydensplot.post <- function(data, xvar, xname=xname, lmts = NULL){
   data %>% 
     ggplot() + 
@@ -80,7 +76,6 @@ mydensplot.post.sim <- function(data, xvar, xname=xname, lmts = NULL){
     scale_fill_manual("Data Set", labels= c("FUSED","B"),values = c("turquoise4","gold")) +
     scale_x_continuous(limits = lmts)
 }
-
 
 mydistplot.post <- function(data, xvar, xname=xname){
   data %>% 
@@ -143,7 +138,7 @@ mydiagnostics <- function(data1, data2){
 }
 
 
-
+#linear model for variable importance, just for robustness
 eta.fcn <- function (glm.yx)
 {
   # function to compute the table of eta and
@@ -167,8 +162,7 @@ eta.fcn <- function (glm.yx)
 }
 
 
-##### function for plotting tree in randomForest #####
-
+#function for plotting tree in randomForest
 to.dendrogram <- function(dfrep,rownum=1,height.increment=0.1){
   
   if(dfrep[rownum,'status'] == -1){
@@ -197,8 +191,9 @@ to.dendrogram <- function(dfrep,rownum=1,height.increment=0.1){
   return(rval)
 }
 
-## function for multiple t-test
+#### correlation functions
 
+## function for multiple t-test
 pairedttest <- function(x,y){
   test <- t.test(x,y, paired=F)
   out <- data.frame(stat = test$statistic,
@@ -217,6 +212,7 @@ corrtest <- function(x,y){
 }
 
 ####### Hot Deck Functions #####
+
 #distance hot deck
 distancehd <- function(A=A,B=B, distfun = mahalanobis, constr = c(algorithm="hungarian", nn=1)){
   match1 <- NND.hotdeck(data.rec=A, data.don=B,
@@ -287,7 +283,7 @@ mvartest <- function(A=A, B=B){
                         as.matrix(factorsNumeric(select(B, one_of(xyz.vars)))))
 }
 
-# Summary statistics function
+# Summary statistics functions
 
 simSumm <- function(repetitions = repetitions, data = data){ 
   summ <- lapply(select(data, -repetitions), 
@@ -354,8 +350,9 @@ montecarlofunc <- function(routine = routine, list1 = list1, list2 =NULL, FUN=FU
 }
 
 
-#### 4th level KS.function
+#### 4th level KS.function ####
 
+#KS test
 KS.match <- function(routine = routine ,list1 = list1, list2 = NULL, out = out){
   if (routine == "distance"){
       setNames(lapply(seq_along(list1), function(w)
@@ -385,7 +382,6 @@ KS.match <- function(routine = routine ,list1 = list1, list2 = NULL, out = out){
 
 
 # KS output function
-
 ksoutput <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
     meandist <- lapply(seq_along(list1), function(p) sapply(seq_along(list2), function(q) sapply(1:6, function(r) 
@@ -466,6 +462,7 @@ kspower <- function(routine = routine){
 
 ##### 3rd level: Correlation ####
 
+#fit correlation matrices over Monte Carlo draws
 corr.match <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
         corr <- setNames(lapply(seq_along(list1), function(g) 
@@ -491,8 +488,7 @@ corr.match <- function(routine = routine, list1 = list1, list2 = NULL){
   }
 }  
 
-
-
+# reshape function
 correshape <- function(data=data){
   data$rows <- rownames(data)
   df <- filter(melt(data),!is.na(value))
@@ -503,6 +499,7 @@ correshape <- function(data=data){
   return(c)
 }
 
+#apply reshape
 montecarlocorr <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
      df <-  setNames(lapply(seq_along(list1), function(z)
@@ -526,7 +523,7 @@ montecarlocorr <- function(routine = routine, list1 = list1, list2 = NULL){
   }
 }
 
-
+#create output of Fishers test
 corroutput <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
     test1 <- lapply(seq_along(list1), function(y) sapply(seq_along(list2), function(x) apply(select(corredist[[y]][[x]], contains("income")), 2, mean)))
@@ -574,8 +571,7 @@ corroutput <- function(routine = routine, list1 = list1, list2 = NULL){
 
 
 
-#### testpower correlation ####
-
+#testpower 3rd level: correlation
 corrpower <- function(routine = routine){
   if (routine == "distance"){
     powerdist <- round(c(sapply(seq_along(distfuns2), function(y) sum(sapply(1:6, function(x) 1- (sum(select(corredist$hungarian[[y]],contains("income"))[[x]] <=pvalue))/rep)) / 6),
@@ -592,7 +588,7 @@ corrpower <- function(routine = routine){
 }  
 
 ###### Level 2: Preserving the distribution #####
-
+# perform test
 xyz.match <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
     xyz <- setNames(llply(.progress = "tk",seq_along(list1), function(g) 
@@ -616,8 +612,7 @@ xyz.match <- function(routine = routine, list1 = list1, list2 = NULL){
   }
 }  
 
-### convert to dataframe
-
+#convert to dataframe
 xyztestdf <- function(data=data, routine=routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
     xyzdf <- do.call("cbind",
@@ -640,10 +635,3 @@ xyztestdf <- function(data=data, routine=routine, list1 = list1, list2 = NULL){
     return(xyzdf)
   }
 }
-
-
-
-
-
-
-
