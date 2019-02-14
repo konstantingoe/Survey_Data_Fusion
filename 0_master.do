@@ -7,9 +7,9 @@ cap log close
 
 * Konsi homeoffice
 
-global do "/Users/konstantingobler/Desktop/Lebenseinkommen Projekt/do/"
-global data "/Users/konstantingobler/Desktop/Lebenseinkommen Projekt/data/"
-global original_wide "/Users/konstantingobler/Desktop/Lebenseinkommen Projekt/stata/"
+global do "/Users/kgoebler/Desktop/Masterthesis/do/"
+global data "/Users/kgoebler/Desktop/Masterthesis/data/"
+global original_wide "/Users/kgoebler/Desktop/Masterthesis/stata/"
 
 
 * Konsi DIW

@@ -96,47 +96,57 @@ temp3 <- hellinger(test1$expunempl, test2$expunempl, method = 1)
 ##### Prepare for matching #####
 
 (X.mtc.final <- c("rente_2015_gesamt", "gbja", "expwork", "expunempl")) #final X_M
+names(X.mtc.final) <- c("Pension entitl.", "YoB", "Work exp." , "Exp. unempl.")
+
 (Z.vars <- setdiff(names(vskt.mp), names(soep.mp))) #available just in VSKT
 (donclass <- c("divorced","sex")) #donation classes
 
-distancematch <- distancehd(A=soep.mp, B=vskt.mp, distfun = "minimax") 
-randommatch <- randomhd(A=soep.mp, B=vskt.mp, distfun = "ANN", cutdon="rot", weight = "weight") 
-randommatch_unwgt <- randomhd(A=soep.mp, B=vskt.mp, distfun = "ANN", cutdon="rot") 
+
+##### Matching #####
+randommatch <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 
+randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 
+randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 
+
+####################
+
 
 #### Post-matching diagnostics: level 4 #####
 
-xz.vars <- c(X.mtc, "brutto_zens_2013", "brutto_zens_2014", "brutto_zens_2015")
-xz.varsl <- as.list(c(X.mtc, "brutto_zens_2013", "brutto_zens_2014", "brutto_zens_2015"))
-names(xz.varsl) <- c("Rente 2015", "Arbeitserfahrung 2012", "Geburtsjahr", "Arbeitsentgeld 2013", "Arbeitsentgeld 2014", "Arbeitsentgeld 2015")
+xz.vars <- c(X.mtc.final, "ltearnings")
+xz.varsl <- as.list(c(X.mtc.final, "Lifetime earnings" = "ltearnings"))
 
-dist.hellinger <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
-  distancematch, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
-
-rand.hellinger <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
+rand.hellinger <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
   randommatch, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+    vskt.mp, one_of(xz.vars))[,t], lower = -Inf, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
 
-rand.hellinger_unwgt <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
-  randommatch_unwgt, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+rand.hellinger2 <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
+  randommatch2, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], lower = -Inf, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+
+rand.hellinger3 <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
+  randommatch3, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], lower = -Inf, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
 
 
-kstest <- lapply(xz.varsl, function(t) ks.test(select(
-  distancematch, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], 
-  alternative = "two.sided")$statistic)
-kstest2 <- lapply(xz.varsl, function(t) ks.test(select(
+kstest1 <- sapply(xz.varsl, function(t) ks.test(select(
   randommatch, one_of(xz.vars))[,t], select(
     vskt.mp, one_of(xz.vars))[,t], 
+  alternative = "two.sided")$p.value)
+
+kstest2 <- sapply(xz.varsl, function(t) ks.test(select(
+  randommatch, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], 
   alternative = "two.sided")$statistic)
 
+kstest3 <- sapply(xz.varsl, function(t) ks.test(select(
+  randommatch2, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], 
+  alternative = "two.sided")$statistic)
 
-hellingerdf <- ldply(rand.hellinger, data.frame, .id = "Variable")
-names(hellingerdf) <- c("Variable", "Hellinger Distanz")
-stargazer(hellingerdf, summary = F, title = "Hellinger Distanzen für die Mathching-Güte der passiven Bevölkerung", out = "hellinger_passiv.tex",
-          notes = "Eigene Berechnungen auf Basis des SOEP v.32 und der VSKT; Für Hellinger Distanzen unter dem Wert 0.05 kann von Gleichheit der Verteilungen ausgegangen werden",
-          notes.align = "l")
+kstest4 <- sapply(xz.varsl, function(t) ks.test(select(
+  randommatch3, one_of(xz.vars))[,t], select(
+    vskt.mp, one_of(xz.vars))[,t], 
+  alternative = "two.sided")$statistic)
 
 #### Deploy final use file ####
 
