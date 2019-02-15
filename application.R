@@ -140,6 +140,8 @@ stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distan
 #multivariate level 4 results:
 
 mvartest1 <- cramer.test(as.matrix(select(randommatch1, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))
+mvartest2 <- cramer.test(as.matrix(select(randommatch2, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))
+mvartest3 <- cramer.test(as.matrix(select(randommatch3, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))
 
 
 #### Deploy final use file ####
