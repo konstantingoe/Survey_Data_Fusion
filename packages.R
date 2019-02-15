@@ -17,6 +17,8 @@ pacman::p_load(
   lm.beta,
   pastecs,
   data.table,
+  doParallel,
+  parallel,
   plyr,
   plm,
   pglm,

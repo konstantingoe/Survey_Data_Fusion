@@ -333,17 +333,17 @@ montecarlofunc <- function(routine = routine, list1 = list1, list2 =NULL, FUN=FU
   if (routine == "distance"){
     llply(.progress = "text", list1, function(y) 
       llply(.progress = "text", list2, function(z) 
-        llply(.progress = "text", A_k, function(x) FUN(x,
+        llply(.parallel = T, .progress = "text", A_k, function(x) FUN(x,
                                     B, distfun = z, constr = y))))
   }else if (routine == "random"){
     llply(.progress = "text", list1, function(y) 
       llply(.progress = "text", list2, function(z) 
-        llply(.progress = "text", A_k, function(x) FUN(x,
+        llply(.parallel = T, .progress = "text", A_k, function(x) FUN(x,
                                     B, distfun = z, cutdon = y))))
     
   }else if (routine == "rank"){
     llply(.progress = "text", list1, function(y) 
-      llply(.progress = "text", A_k, function(x) FUN(x,
+      llply(.parallel = T, .progress = "text", A_k, function(x) FUN(x,
                                   B, constr = y)))
   }
   
@@ -593,24 +593,49 @@ xyz.match <- function(routine = routine, list1 = list1, list2 = NULL){
   if (routine == "distance"){
     xyz <- setNames(llply(.progress = "tk",seq_along(list1), function(g) 
       setNames(llpply(.progres = "text",seq_along(list2), function(s)
-        setNames(llply(.progress = "text",1:rep, function(z) mvartest(A=soep, 
+        setNames(llply(.parallel = T, .progress = "text",1:rep, function(z) mvartest(A=soep, 
           B=simlist$distancematch[[g]][[s]][[z]])$p.value),names(A_k))),names(list2))), names(list1))
     return(xyz)
     
   }else if (routine == "random"){
     xyz <- setNames(llply(.progress = "tk", seq_along(list1), function(g) 
       setNames(llply(.progress = "text",seq_along(list2), function(s)
-        setNames(llply(.progress = "text",1:rep, function(z) mvartest(A=soep, 
+        setNames(llply(.parallel = T, .progress = "text",1:rep, function(z) mvartest(A=soep, 
           B=simlist$randommatch[[g]][[s]][[z]])$p.value),names(A_k))),names(list2))), names(list1))
     return(xyz)
   }else if (routine == "rank"){
     xyz <- setNames(llply(.progress = "tk",seq_along(distfuns1), function(g) 
-        setNames(llply(.progress = "text",1:rep, function(z) mvartest(A=soep, 
+        setNames(llply(.parallel = T, .progress = "text",1:rep, function(z) mvartest(A=soep, 
             B=simlist$rankmatch[[g]][[z]])$p.value),
                  names(A_k))), names(distfuns1))
     return(xyz)
   }
 }  
+
+
+# if on a windows machine use this function: 
+
+xyz.match.win <- function(routine = routine, list1 = list1, list2 = NULL){
+  if (routine == "distance"){
+    xyz <- setNames(lapply(seq_along(list1), function(g) 
+      setNames(lapply(seq_along(list2), function(s)
+        setNames(parLapply(cl, 1:rep, function(z) mvartest(A=soep, 
+                                                           B=simlist$distancematch[[g]][[s]][[z]])$p.value),names(A_k))),names(list2))), names(list1))
+    return(xyz)
+  }else if (routine == "random"){
+    xyz <- setNames(lapply(seq_along(list1), function(g) 
+      setNames(lapply(seq_along(list2), function(s)
+        setNames(parLapply(cl, 1:rep, function(z) mvartest(A=soep, 
+                                                           B=simlist$randommatch[[g]][[s]][[z]])$p.value),names(A_k))),names(list2))), names(list1))
+    return(xyz)
+  }else if (routine == "rank"){
+    xyz <- setNames(lapply(seq_along(distfuns1), function(g) 
+      setNames(parLapply(cl, 1:rep, function(z) mvartest(A=soep, 
+                                                         B=simlist$rankmatch[[g]][[z]])$p.value),
+               names(A_k))), names(distfuns1))
+    return(xyz)
+  }
+}
 
 #convert to dataframe
 xyztestdf <- function(data=data, routine=routine, list1 = list1, list2 = NULL){

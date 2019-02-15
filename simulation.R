@@ -252,7 +252,21 @@ stargazer(rbind(rankcorrmeanoutput,corrrankpower), summary = F, title = "Mean ov
 
 #### 2nd level ####
 
+# if windows: 
+# initiate parallel processing: 
+#library(doParallel) 
+no_cores <- detectCores() - 1  #minus 1 so that the machine can still perform pasic tasks
+registerDoParallel(cores=no_cores)  
+cl <- makeCluster(no_cores, type="PSOCK") # if not on windows put in here "FORK" or use the llply parallel==T version in the functions I provide
+clusterExport(cl=cl, varlist=c("simlist", "soep", "xyz.vars", "factorsNumeric", "asNumeric", "mvartest", "distfuns1", "distfuns2", "xyz.match", "randomfuns1", "randomfuns2"),envir=environment())
+clusterEvalQ(cl, list(library(cramer), library(dplyr), library(utils), library(stats), factorsNumeric, asNumeric, mvartest, xyz.match))
+
+
 #Remark: Computational intensive 
+#---------------------------------------------------------#
+# if on a windows machine use this function: xyz.match.win
+#---------------------------------------------------------#
+# instead of xyz.match 
 
 xyztestdist <- xyz.match(routine = "distance", list1 = distfuns1, list2 = distfuns2)
 save(xyztestdist, file = "cramerdist.RDA")
@@ -260,6 +274,9 @@ xyztestrand <- xyz.match(routine = "random", list1 = randomfuns1, list2 = random
 save(xyztestrand, file = "cramerrand.RDA")
 xyztestrank <- xyz.match(routine = "rank", list1 = distfuns1)
 save(xyztestrank, file = "cramerrank.RDA")
+
+stopCluster(cl)  
+
 
 #data frame and latex tables:
 
