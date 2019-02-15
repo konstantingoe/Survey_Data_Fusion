@@ -102,12 +102,11 @@ names(X.mtc.final) <- c("Pension entitl.", "YoB", "Work exp." , "Exp. unempl.")
 (donclass <- c("divorced","sex")) #donation classes
 
 
-##### Matching #####
-randommatch <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 
-randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 
+##### Matching  #####
+randommatch1 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 
+randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 
 randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 
-
-####################
+#------------------#
 
 
 #### Post-matching diagnostics: level 4 #####
@@ -115,38 +114,33 @@ randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", 
 xz.vars <- c(X.mtc.final, "ltearnings")
 xz.varsl <- as.list(c(X.mtc.final, "Lifetime earnings" = "ltearnings"))
 
-rand.hellinger <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
-  randommatch, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], lower = -Inf, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
-
-rand.hellinger2 <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
-  randommatch2, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], lower = -Inf, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
-
-rand.hellinger3 <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
-  randommatch3, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], lower = -Inf, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
-
-
 kstest1 <- sapply(xz.varsl, function(t) ks.test(select(
-  randommatch, one_of(xz.vars))[,t], select(
+  randommatch1, one_of(xz.vars))[,t], select(
     vskt.mp, one_of(xz.vars))[,t], 
-  alternative = "two.sided")$p.value)
+  alternative = "two.sided")$statistic)
 
 kstest2 <- sapply(xz.varsl, function(t) ks.test(select(
-  randommatch, one_of(xz.vars))[,t], select(
+  randommatch2, one_of(xz.vars))[,t], select(
     vskt.mp, one_of(xz.vars))[,t], 
   alternative = "two.sided")$statistic)
 
 kstest3 <- sapply(xz.varsl, function(t) ks.test(select(
-  randommatch2, one_of(xz.vars))[,t], select(
-    vskt.mp, one_of(xz.vars))[,t], 
-  alternative = "two.sided")$statistic)
-
-kstest4 <- sapply(xz.varsl, function(t) ks.test(select(
   randommatch3, one_of(xz.vars))[,t], select(
     vskt.mp, one_of(xz.vars))[,t], 
   alternative = "two.sided")$statistic)
+
+kstestfinal <- round(bind_rows(kstest1, kstest2, kstest3),digits = 4)
+rownames(kstestfinal) <- c("Hungarian", "Minimax", "Gower")
+ks.cutofflevel <- 1.224 * sqrt((nrow(soep.mp) + nrow(vskt.mp))/(nrow(soep.mp)*nrow(vskt.mp)))
+
+stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distance after weighted random distance hot deck matching of SOEP and VSKT",
+          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population. Displayed are KS distances. The correspoding critical value for equivalence of marginal distributions is $0.021$",
+          label = "lv4application", notes.align = "l", summary = F)
+
+#multivariate level 4 results:
+
+mvartest1 <- cramer.test(as.matrix(select(randommatch1, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))
+
 
 #### Deploy final use file ####
 
