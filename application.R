@@ -108,7 +108,6 @@ randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min"
 randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 
 #------------------#
 
-
 #### Post-matching diagnostics: level 4 #####
 
 xz.vars <- c(X.mtc.final, "ltearnings")
@@ -130,12 +129,8 @@ kstest3 <- sapply(xz.varsl, function(t) ks.test(select(
   alternative = "two.sided")$statistic)
 
 kstestfinal <- round(bind_rows(kstest1, kstest2, kstest3),digits = 4)
-rownames(kstestfinal) <- c("Hungarian", "Minimax", "Gower")
+rownames(kstestfinal) <- c("Mahalanobis", "Minimax", "Gower")
 ks.cutofflevel <- 1.224 * sqrt((nrow(soep.mp) + nrow(vskt.mp))/(nrow(soep.mp)*nrow(vskt.mp)))
-
-stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distance after weighted random distance hot deck matching of SOEP and VSKT",
-          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population. Displayed are KS distances. The correspoding critical value for equivalence of marginal distributions is $0.021$",
-          label = "lv4application", notes.align = "l", summary = F)
 
 #multivariate level 4 results:
 
@@ -143,15 +138,28 @@ mvartest1 <- cramer.test(as.matrix(select(randommatch1, one_of(xz.vars))), as.ma
 mvartest2 <- cramer.test(as.matrix(select(randommatch2, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))
 mvartest3 <- cramer.test(as.matrix(select(randommatch3, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))
 
+#save(mvartest1, file="applicramer1")
+#save(mvartest2, file="applicramer2")
+#save(mvartest3, file="applicramer3")
 
-save(mvartest1, file="applicramer1")
-save(mvartest2, file="applicramer2")
-save(mvartest3, file="applicramer3")
+mvarfinal <- as.data.frame(c(mvartest1$statistic, mvartest2$statistic, mvartest3$statistic))
+rownames(mvarfinal) <- c("Mahalanobis", "Minimax", "Gower")
+colnames(mvarfinal) <- "Cramer"
+
+kstestfinal <- bind_cols(kstestfinal, mvarfinal)
+rownames(kstestfinal) <- c("Mahalanobis", "Minimax", "Gower")
+
+# last table
+
+stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distance after weighted random distance hot deck matching of SOEP and VSKT",
+          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population. Displayed are KS distances. The correspoding critical value for equivalence of marginal distributions is $0.021$",
+          label = "lv4application", notes.align = "l", summary = F)
+
 
 #### Deploy final use file ####
 
-save(randommatch, file="passive_match_weighted.RDA")
-write.dta(randommatch, file = "passive_match_weighted.dta")
+save(randommatch1, file="passive_match_weighted.RDA")
+write.dta(randommatch1, file = "passive_match_weighted.dta")
 
 #### Finished #####
 
