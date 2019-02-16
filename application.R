@@ -144,6 +144,10 @@ mvartest2 <- cramer.test(as.matrix(select(randommatch2, one_of(xz.vars))), as.ma
 mvartest3 <- cramer.test(as.matrix(select(randommatch3, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))
 
 
+save(mvartest1, file="applicramer1")
+save(mvartest2, file="applicramer2")
+save(mvartest3, file="applicramer3")
+
 #### Deploy final use file ####
 
 save(randommatch, file="passive_match_weighted.RDA")
