@@ -155,6 +155,23 @@ stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distan
           digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population. Displayed are KS distances. The correspoding critical value for equivalence of marginal distributions is $0.021$",
           label = "lv4application", notes.align = "l", summary = F)
 
+# final descriptives of matched file:
+
+randommatch.tex <- randommatch1 %>% 
+  mutate(female = as.numeric(ifelse(as.numeric(sex)==2,0,1))) %>% 
+  mutate(everdivorced = as.numeric(as.numeric(divorced)==2,0,1)) %>% 
+  mutate(ltearnings = round(ltearnings)) %>% 
+  mutate(rente_2015_gesamt = round(rente_2015_gesamt)) %>% 
+  mutate(unempben = round(unempben))
+
+final.vars <- c("education", X.mtc, "ltearnings", "female", "everdivorced")
+randommatch.tex <- select(randommatch.tex, one_of(final.vars))
+names(randommatch.tex) <- c("Education", "Pension entitl.", "YoB", "Unempl. benefit", "Work exp." , "Exp. unempl.", "Lifetime earnings", "Female", "Ever divorced")
+
+stargazer(randommatch.tex, out = "descriptives_matched.tex", title = "Chosen descriptive statistics of the synthetic use file, matched from the SOEP as the receiving and the VSKT as the donating data source.",
+          digits = 4, notes = "Author's calculations based on VSKT 2002, 2004-2015 passive West German population. Weighted random distance hot deck matching utilizing the Mahalanobis distance function.",
+          label = "tablefinal", notes.align = "l", summary = F)
+
 
 #### Deploy final use file ####
 

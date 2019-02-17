@@ -1,1 +1,1 @@
-path <- "/Users/kgoebler/Desktop/Masterthesis/data"
+path <- "/Users/kgoebler/Desktop/Lebenseinkommen Projekt/data/"
