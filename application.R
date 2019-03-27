@@ -24,7 +24,7 @@ vskt.mp <- vskt.mp %>%
   mutate(ltearnings = npv_1760_r_net)
 
 #select most interesting VSKT variables... can be remerged by case id 
-vskt.mp <- select(vskt.mp, one_of(c("case","sex", "gbja", "weight", "rente_2015_gesamt", "unempben", "expunempl", "divorced", "expwork", "ltearnings", "age", "soep")))
+vskt.mp <- select(vskt.mp, one_of(c("case","sex", "gbja", "weight", "rente_2015_gesamt", "unempben", "expunempl", "divorced", "expwork", "ltearnings", "age", "soep","ja")))
 
 #select jointly observed variables
 (X.vars <- intersect(names(soep.mp), names(vskt.mp)))
