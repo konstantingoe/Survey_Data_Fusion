@@ -11,8 +11,8 @@ set.seed(1234)
 soep <- import(paste(path, "soep_passive_ges.dta" , sep = "/"), setclass = "data.table")
 vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass = "data.table")
 
-vskt.mp <- vskt.mp %>% 
-  mutate(case = case/2+case^2)
+#vskt.mp <- vskt.mp %>% 
+ # mutate(case = case/2+case^2)
 
 # perform simulation on the basis of soep
 # for this use soep twice delete in each set variables and keep X as common variables
