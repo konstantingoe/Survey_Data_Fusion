@@ -7,6 +7,7 @@ source(".path.R")
 ##### Initiate #####
 
 #load SOEP and VSKT
+# 0 = weibl., 1 männlich
 soep.mp <- import(paste(path, "soep_passive_ges.dta" , sep = "/"), setclass = "data.table")
 vskt.mp <- import(paste(path, "vskt_passiv_panel_ges.dta" , sep = "/"), setclass = "data.table")
 

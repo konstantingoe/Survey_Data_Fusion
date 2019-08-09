@@ -110,8 +110,8 @@ save "${data}vskt_passiv_panel_`sex'2.dta", replace
 }
 
 append using "${data}vskt_passiv_panel_m2.dta", gen(sex)
-lab def gender 0 "female" 1 "male"
-lab val sex gender
+*lab def gender 0 "female" 1 "male"
+*lab val sex gender
 
 recode gbja (1935/1940=40) (1941/1945=45) (1946/1950=50) (1951/1955=55), gen(gbja_cat) 
 
@@ -282,7 +282,7 @@ forval i=1995 (1) 2015{
 }
 
 ren gebjahr gbja
-replace sex = 0 if sex ==2
+recode sex (1=0) (2=1)
 
 
 *** how to weight? 

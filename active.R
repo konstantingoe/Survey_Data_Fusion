@@ -7,10 +7,10 @@ source(".path.R")
 
 # loading soep
 soep.men.active <- import(paste(path, "soep_2012_m_aktiv.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=0)
+  mutate(sex=1)
 
 soep.women.active <- import(paste(path, "soep_2012_f_aktiv.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=1)
+  mutate(sex=0)
 soep.full <- bind_rows(soep.men.active, soep.women.active) %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
   mutate(spez_scheidung = factor(spez_scheidung,ordered = F)) %>% 
@@ -24,10 +24,10 @@ rm(soep.men.active,soep.women.active)
 
 # loading VSKT
 vskt.men.active <- import(paste(path, "vskt_m_active.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=0)
+  mutate(sex=1)
 
 vskt.women.active <- import(paste(path, "vskt_f_active.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=1)
+  mutate(sex=0)
 vskt.full <- bind_rows(vskt.men.active, vskt.women.active) %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
   mutate(spez_scheidung = factor(spez_scheidung,ordered = F)) %>% 
@@ -110,13 +110,16 @@ ggsave("unemptime.pdf")
 q <- cowplot::plot_grid(anwartschaften.plot, income.plot, birthyear.plot, worktime.plot, unempexp.plot, ncol=2, nrow=3)
 ggsave("grid2.pdf", q)
 
-soep.vars <- setdiff(names(soep.men.active), names(vskt.m.active)) # available just in SOEP
+soep.vars <- setdiff(names(soep.full), names(vskt.full)) # available just in SOEP
 
 Z.vars <- setdiff(names(vskt.full), names(soep.full)) # available just in VSKT
 
 ### matching:
 
 distancematch <- distancehd(A=soep.full,B=vskt.full, distfun = "minimax")
+
+distancematch <- distancehd(A=soep.full,B=vskt.full,distfun = "Mahalanobis")
+
 randommatch <- randomhd(A=soep.full,B=vskt.full, distfun = "ANN", cutdon = "min")
 
 ### ks-distance post matching
