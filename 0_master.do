@@ -21,6 +21,12 @@ global original_wide "S:\data\soep32_de\stata\"
 global original_wide_old "S:\data\soep30_de\stata\"
 global log "S:\STUD\kgoebler\Lebenseinkommen\log\"
 
+* Konsi Ext. Drive
+global do "E:\DIW\Lebenseinkommen\do\"
+global data "E:\DIW\Lebenseinkommen\data\"
+
+
+
 qui ssc install kmatch, replace
 qui ssc install kdens, replace
 qui ssc install psmatch2, replace

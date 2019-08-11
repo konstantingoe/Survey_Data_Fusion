@@ -7,10 +7,10 @@ source(".path.R")
 
 # loading soep
 soep.men.active <- import(paste(path, "soep_2012_m_aktiv.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=1)
+  mutate(sex=0)
 
 soep.women.active <- import(paste(path, "soep_2012_f_aktiv.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=0)
+  mutate(sex=1)
 soep.full <- bind_rows(soep.men.active, soep.women.active) %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
   mutate(spez_scheidung = factor(spez_scheidung,ordered = F)) %>% 
@@ -24,10 +24,10 @@ rm(soep.men.active,soep.women.active)
 
 # loading VSKT
 vskt.men.active <- import(paste(path, "vskt_m_active.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=1)
+  mutate(sex=0)
 
 vskt.women.active <- import(paste(path, "vskt_f_active.dta" , sep = "/"), setclass = "data.table") %>% 
-  mutate(sex=0)
+  mutate(sex=1)
 vskt.full <- bind_rows(vskt.men.active, vskt.women.active) %>% 
   mutate(sex = factor(sex, ordered = F)) %>% 
   mutate(spez_scheidung = factor(spez_scheidung,ordered = F)) %>% 
@@ -116,33 +116,50 @@ Z.vars <- setdiff(names(vskt.full), names(soep.full)) # available just in VSKT
 
 ### matching:
 
-distancematch <- distancehd(A=soep.full,B=vskt.full, distfun = "minimax")
+distancematch1 <- distancehd(A=soep.full,B=vskt.full, distfun = "minimax")
 
-distancematch <- distancehd(A=soep.full,B=vskt.full,distfun = "Mahalanobis")
+distancematch2 <- distancehd(A=soep.full,B=vskt.full,distfun = "Mahalanobis")
 
-randommatch <- randomhd(A=soep.full,B=vskt.full, distfun = "ANN", cutdon = "min")
+randommatch <- randomhd(A=soep.full,B=vskt.full, distfun = "Gower", cutdon = "min")
 
 ### ks-distance post matching
 xz.vars <- c(X.mtc, "brutto_zens_2013" )
 xz.varsl <- as.list(c(X.mtc, "brutto_zens_2013" ))
 names(xz.varsl) <- c("Arbeitsentgeld 2012", "Rentenanwartschaften 2012", "Arbeitserfahrung 2012", "Alter", "Arbeitslosenzeit 2012", "Arbeitentgeld 2013")
 
-kstest <- lapply(xz.varsl, function(t) ks.test(select(
-  distancematch, one_of(xz.vars))[,t], select(
+kstest1 <- sapply(xz.varsl, function(t) ks.test(select(
+  distancematch1, one_of(xz.vars))[,t], select(
     vskt.full, one_of(xz.vars))[,t], 
-  alternative = "two.sided"))
-kstest2 <- lapply(xz.varsl, function(t) ks.test(select(
+  alternative = "two.sided")$statistic)
+
+kstest2 <- sapply(xz.varsl, function(t) ks.test(select(
+  distancematch2, one_of(xz.vars))[,t], select(
+    vskt.full, one_of(xz.vars))[,t], 
+  alternative = "two.sided")$statistic)
+
+kstest3 <- sapply(xz.varsl, function(t) ks.test(select(
   randommatch, one_of(xz.vars))[,t], select(
     vskt.full, one_of(xz.vars))[,t], 
-  alternative = "two.sided"))
+  alternative = "two.sided")$statistic)
+
+rbind(kstest1,kstest2,kstest3)
+
 # report hellinger distance, as it is already explained and merely all variables are not fully continuous
-dist.hellinger <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
-  distancematch, one_of(xz.vars))[,t], select(
+dist.hellinger1 <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
+  distancematch1, one_of(xz.vars))[,t], select(
     vskt.full, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
 
-rand.hellinger <- lapply(xz.varsl, function(t) tryCatch({hellinger(select(
+dist.hellinger2 <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
+  distancematch2, one_of(xz.vars))[,t], select(
+    vskt.full, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+
+
+rand.hellinger <- sapply(xz.varsl, function(t) tryCatch({hellinger(select(
   randommatch, one_of(xz.vars))[,t], select(
     vskt.full, one_of(xz.vars))[,t], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))
+
+rbind(dist.hellinger1,dist.hellinger2,rand.hellinger)
+
 
 hellingerdf <- ldply(rand.hellinger, data.frame, .id = "Variable")
 names(hellingerdf) <- c("Variable", "Hellinger Distanz")
@@ -151,13 +168,13 @@ stargazer(hellingerdf, summary = F, title = "Hellinger Distanzen für Mathching-
           notes.align = "l")
 # graphical assesssment
 
-randommatch <- randommatch %>% 
+distancematch2 <- distancematch2 %>% 
   mutate(vskt=0)
 
 vskt.full <- vskt.full %>% 
   mutate(vskt=1)
 
-joint2 <- bind_rows(randommatch, vskt.full)
+joint2 <- bind_rows(distancematch2, vskt.full)
 
 joint2 <- joint2 %>% 
   mutate(vskt=factor(vskt, ordered = F))
@@ -166,8 +183,7 @@ joint2 <- joint2 %>%
 inc2013.plot <- mydensplot.post(joint2, "brutto_zens_2013", xname = "Arbeitsentgeld 2013 in €", lmts = c(1,70000))
 ggsave("income2013.pdf")
 
-save(randommatch, file="active_match.RDA")
-
-write.dta(randommatch, file = "active_match.dta")
+save(distancematch2, file="active_match.RDA")
+write.dta(distancematch2, file = "active_match.dta")
 
 
