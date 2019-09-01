@@ -13,7 +13,7 @@ soep.mp <- import(paste(path.new, "soep_passive_m.dta" , sep = "/"), setclass = 
 
 
 soep.mp <- soep.mp %>% 
-  mutate(divorced = factor(divorced,ordered = F)) %>% 
+  mutate(divorced = factor(divorce5,ordered = F)) %>% 
   mutate(age = maxyear -gbja) 
 vskt.mp <- vskt.mp %>% 
   mutate(divorced = factor(spez_scheidung,ordered = F)) %>% 

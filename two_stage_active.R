@@ -116,7 +116,7 @@ kstest3 <- sapply(xz.varsl, function(t) ks.test(select(
   alternative = "two.sided")$statistic)
 
 kstestfinal <- round(rbind(kstest1, kstest2, kstest3),digits = 4)
-rownames(kstestfinal) <- c( "Minimax", "Mahalanobis" "Gower (random)")
+rownames(kstestfinal) <- c( "Minimax", "Mahalanobis", "Gower (random)")
 ks.cutofflevel <- 1.224 * sqrt((nrow(soep.ma) + nrow(vskt.ma))/(nrow(soep.ma)*nrow(vskt.ma)))
 
 #multivariate level 4 results:
@@ -130,11 +130,11 @@ mvartest3 <- cramer.test(as.matrix(select(randommatch, one_of(xz.vars))), as.mat
 #save(mvartest3, file="applicramer3")
 
 mvarfinal <- as.data.frame(c(mvartest1$statistic, mvartest2$statistic, mvartest3$statistic))
-rownames(mvarfinal) <- c( "Minimax", "Mahalanobis" "Gower (random)")
+rownames(mvarfinal) <- c( "Minimax", "Mahalanobis", "Gower (random)")
 colnames(mvarfinal) <- "Cramer"
 
 kstestfinal <- bind_cols(kstestfinal, mvarfinal)
-rownames(kstestfinal) <- c( "Minimax", "Mahalanobis" "Gower (random)") 
+rownames(kstestfinal) <- c( "Minimax", "Mahalanobis", "Gower (random)") 
 
 # last table
 

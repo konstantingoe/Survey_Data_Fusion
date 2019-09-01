@@ -16,38 +16,19 @@ global original_wide "/Users/kgoebler/Desktop/Lebenseinkommen Projekt/stata/"
 global do "S:\STUD\kgoebler\Lebenseinkommen\do\"
 global data "S:\STUD\kgoebler\Lebenseinkommen\data\"
 global grafik "S:\STUD\kgoebler\Lebenseinkommen\grafik\"
-global original_long "S:\data\soep32_de_l\stata\"
-global original_wide "S:\data\soep32_de\stata\"
+global original_long "V:\distribution\soep-core\soep.v34\stata"
+global original_wide "V:\distribution\soep-core\soep.v34\stata\"
 global original_wide_old "S:\data\soep30_de\stata\"
 global log "S:\STUD\kgoebler\Lebenseinkommen\log\"
 
 * Konsi Ext. Drive
-global do "E:\DIW\Lebenseinkommen\do\"
-global data "E:\DIW\Lebenseinkommen\data\"
+global original_wide "V:\distribution\soep-core\soep.v34\stata\"
+global original_wide_raw "V:\distribution\soep-core\soep.v34\stata\raw\"
+global do "E:\Lebenseinkommen Projekt\do_new\"
+global data "E:\Lebenseinkommen Projekt\"
 
 
 
 qui ssc install kmatch, replace
 qui ssc install kdens, replace
 qui ssc install psmatch2, replace
-
-*--------------------------------------------------------------------------------------------------------------------------------------------------------------
-* Programminformationen
-*--------------------------------------------------------------------------------------------------------------------------------------------------------------
-* geschrieben mit STATA 13
-* benötitigte ado files Renten- und Pensionenberechnung
-qui ssc install rowsort
-qui ssc install xml_tab
-qui ssc install outreg2
-
-*--------------------------------------------------------------------------------------------------------------------------------------------------------------
-* data generation, imputation and GRV computation
-*--------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-do "${do}1_prepare_soep.do"
-
-
-do "${do}1_pmm.do"
-
-* check goodness of imputation
-*do "${do}1a_pmm_pseudo.do"

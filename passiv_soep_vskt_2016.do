@@ -178,13 +178,13 @@ global j_15 14
 global j_16 15
 
 
-use persnr gebjahr sex loc1989 immiyear using  "${original_wide}ppfad.dta", clear
-		sort persnr
+use pid gebjahr sex loc1989 immiyear using  "${original_wide}ppath.dta", clear
+		sort pid
 		keep if immiyear == -2
 		keep if loc1989 == 2
 		drop immiyear loc1989
 
-		merge 1:1 persnr using "${original_wide}lpequiv", keepus(persnr igrv195) nogen keep(3)
+		merge 1:1 pid using "${original_wide_raw}lpequiv", keepus(pid igrv195) nogen keep(3)
 
 		keep if gebjahr>1934 & gebjahr<=1935  & igrv195 >0
 
@@ -197,16 +197,16 @@ save "${data}soep_passive_95", replace
  
 foreach var in 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
 
-		use persnr gebjahr sex loc1989 immiyear using  "${original_wide}ppfad.dta", clear
-		sort persnr
+		use pid gebjahr sex loc1989 immiyear using  "${original_wide}ppath.dta", clear
+		sort pid
 		keep if immiyear == -2
 		keep if loc1989 == 2
 		drop immiyear loc1989
 	
-		merge 1:1 persnr using "${original_wide}\${w_`var'}pequiv", keepus(persnr igrv1`var') nogen keep(3)
+		merge 1:1 pid using "${original_wide_raw}\${w_`var'}pequiv", keepus(pid igrv1`var') nogen keep(3)
 
 		keep if gebjahr>1934 & gebjahr<=`year'  & igrv1`var' >0 
-		merge 1:1 persnr using "${data}soep_passive_${j_`var'}"
+		merge 1:1 pid using "${data}soep_passive_${j_`var'}"
 
 		*** wenn _merge==1 dann Renteneintritt
 		*** wenn _merge==2 dann Dropout -> moeglicherweise alle dropouts vor dem vollendeten 65 Lebensjahr ausschliessen -> Timm fragen
@@ -289,7 +289,7 @@ lab drop sex
 
 * get the weights from every year where renteneintritt is true!
 
-merge 1:1 persnr using "${original_wide}phrf", keepus( persnr *phrf) keep(3) nogen
+merge 1:1 pid using "${original_wide_raw}phrf", keepus(pid *phrf) keep(3) nogen
 gen pwgt = 0
 
 foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
@@ -312,12 +312,12 @@ use "${data}soep_passive_full_1", clear
 *84 85 86 87 88 89 90 91 92 93 94 
 foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
 
-merge 1:1 persnr using "${original_wide}\${w_`var'}pgen", keepus(persnr isced11_`var' exppt`var' expft`var' expue`var') keep(1 3) nogen
+merge 1:1 pid using "${original_wide_raw}\${w_`var'}pgen", keepus(pid isced11_`var' exppt`var' expft`var' expue`var') keep(1 3) nogen
 
 }
 
 foreach i in 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
-	merge 1:1 persnr using "${original_wide}/${w_`i'}pequiv", keepus(persnr i11110`wave' iself`wave' iunby`wave') keep(1 3) nogenerate
+	merge 1:1 pid using "${original_wide_raw}/${w_`i'}pequiv", keepus(pid i11110`wave' iself`wave' iunby`wave') keep(1 3) nogenerate
 	gen earnings_`i' = max(0,i11110`i' - iself`i')
 
 }
@@ -354,7 +354,7 @@ replace expunempl = expunempl*12
 save "${data}soep_passive_full_div", replace 
 
 * divorced
-
+/*
 *** Info fuer jemals geschieden sammeln ***;
 use "${original_wide}biomarsy",clear
 drop if beginy > $maxyear
@@ -367,8 +367,17 @@ sort persnr
 save "${data}divorced.dta", replace
 
 use "${data}soep_passive_full_div", clear
+*/
+use "${data}soep_passive_full_div", clear
 
-merge 1:1 persnr using "${data}divorced.dta", keepus(divorced) keep(1 3) nogen
+preserve 
+do "C:\Users\kgoebler\Documents\Survey_Data_Fusion\2_divorce_info.do"
+restore 
+
+merge 1:1 pid using "${data}divorce.dta", keep(1 3) nogen
+
+replace divorce5 = 0 if missing(divorce5)
+replace divorce10 = 0 if missing(divorce10)
 
 
 foreach x in experienceft experiencept education expunempl {
@@ -378,8 +387,6 @@ foreach x in experienceft experiencept education expunempl {
 	 tab1 `x'
 	
 }
-
-
 
 drop isced11* expft* exppt* earnings* i11110* iself* iunby* expue*
 
@@ -398,7 +405,7 @@ ren renteneintritt_ges rentenbeginn
 
 drop igrv* renteneintritt_* experienceft experiencept exppt
 
-order persnr sex gbja gbja_cat pwgt 
+order pid sex gbja gbja_cat pwgt 
 
 drop if expwork==.
 drop if education ==.

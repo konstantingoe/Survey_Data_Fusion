@@ -76,27 +76,35 @@ save "${data}vskt_m_active.dta", replace
 set more off
 clear
 
+do "C:\Users\kgoebler\Documents\Survey_Data_Fusion\2_divorce_info.do"
+
+/*
 *** Info fuer jemals geschieden sammeln ***;
 use ${original_wide}biomarsy
 gen x=0
 replace x=1 if spelltyp==3 | spelltyp==5
-egen divorced=max(x), by(persnr)
-bysort persnr: gen n=_n
+egen divorced=max(x), by(pid)
+bysort pid: gen n=_n
 keep if n==1
-sort persnr
+sort pid
 save "${data}divorced.dta", replace
 clear
-
+*/
 ************************************************************************************************************
 ***Reference 2013
-use persnr gebjahr sex loc1989 immiyear bdsampreg bcnetto bdnetto using  "${original_wide}ppfad.dta", clear
+use pid gebjahr sex loc1989 immiyear bdsampreg bcnetto bdnetto using  "${original_wide_raw}ppfad.dta", clear
 keep if (bdnetto >= 10 & bdnetto <19)
-sort persnr
+sort pid
 
-merge 1:1 persnr using ${original_wide}bdp, keepus(persnr bdp10101 bdp10103 bdp10105 bdp10107 bdp102 bdp6501 bdp10301 bdp7701 bdp10302 bdp10303 bdp107 bdp10801 bdp10802 bdp10901 bdp10902 bdp10903) keep(3) nogenerate
-merge 1:1 persnr using ${original_wide}phrf, keepus(persnr bcphrfaj bdphrfak) keep(3) nogenerate
-merge 1:1 persnr using ${original_wide}biobirth, keepus(persnr sumkids) keep(1 3) nogenerate
-merge 1:1 persnr using "${data}divorced.dta", keep(1 3) nogenerate
+merge 1:1 pid using ${original_wide_raw}bdp, keepus(pid bdp10101 bdp10103 bdp10105 bdp10107 bdp102 bdp6501 bdp10301 bdp7701 bdp10302 bdp10303 bdp107 bdp10801 bdp10802 bdp10901 bdp10902 bdp10903) keep(3) nogenerate
+merge 1:1 pid using ${original_wide_raw}phrf, keepus(pid bcphrfaj bdphrfak) keep(3) nogenerate
+ren pid persnr
+merge 1:1 persnr using ${original_wide_raw}biobirth, keepus(persnr sumkids) keep(1 3) nogenerate
+ren persnr pid
+merge 1:1 pid using "${data}divorce.dta", keep(1 3) nogenerate
+replace divorce5 = 0 if missing(divorce5)
+replace divorce10 = 0 if missing(divorce10)
+
 
 global w_00  q
 global w_01  r
@@ -120,8 +128,8 @@ gen obs = 0
 *00 01 02 03 04 05 06 07 08 09 10
 
 foreach wave in  11 12 13 {
-	merge 1:1 persnr using ${original_wide}\${w_`wave'}pequiv, keepus(persnr i11110`wave' iself`wave' ioldy`wave' igrv1`wave' iciv1`wave' ivbl1`wave' icom1`wave' iwar1`wave' iguv1`wave' ison1`wave' iprv1`wave' igrv2`wave' iciv2`wave' ivbl2`wave' icom2`wave' iwar2`wave' iguv2`wave' ison2`wave' iprv2`wave' iwidy`wave' iunby`wave' d11107`wave') keep(1 3) nogenerate
-	merge 1:1 persnr using ${original_wide}\${w_`wave'}pgen, keepus(persnr isced11_`wave' labgro`wave' emplst`wave' ${w_`wave'}vebzeit expft`wave' exppt`wave' expue`wave' stib`wave' betr`wave' oeffd`wave' nace`wave' ${w_`wave'}erwzeit ${w_`wave'}famstd  jobch`wave') keep(1 3) nogenerat 
+	merge 1:1 pid using ${original_wide_raw}\${w_`wave'}pequiv, keepus(pid i11110`wave' iself`wave' ioldy`wave' igrv1`wave' iciv1`wave' ivbl1`wave' icom1`wave' iwar1`wave' iguv1`wave' ison1`wave' iprv1`wave' igrv2`wave' iciv2`wave' ivbl2`wave' icom2`wave' iwar2`wave' iguv2`wave' ison2`wave' iprv2`wave' iwidy`wave' iunby`wave' d11107`wave') keep(1 3) nogenerate
+	merge 1:1 pid using ${original_wide_raw}\${w_`wave'}pgen, keepus(pid isced11_`wave' labgro`wave' emplst`wave' ${w_`wave'}vebzeit expft`wave' exppt`wave' expue`wave' stib`wave' betr`wave' oeffd`wave' nace`wave' ${w_`wave'}erwzeit ${w_`wave'}famstd  jobch`wave') keep(1 3) nogenerat 
 	replace obs = obs + 1 if i11110`wave' !=.
 	gen self_`wave' = 0
 	gen civil_`wave' = 0
@@ -188,7 +196,7 @@ replace bdp102x = 2 if bdp102x == 1 & iciv113 > 0 & iciv113 < . & bdp10303==1
 replace bdp102x = 2 if bdp102x == 1 & (expft13+exppt13+expue13)<5 & sumkids==0 
 replace bdp102x = 3 if bdp102x == 1 & igrv113 > 0 & igrv113 < . & inlist(bdp10302,-1,-2)
 replace bdp102x = 1 if bdp102x == 2 & expft13==. & bdp102==1  & gebjahr < 1988
-replace bdp102x = 1 if inlist(persnr,3149201,30695902,30831201)
+replace bdp102x = 1 if inlist(pid,3149201,30695902,30831201)
 
 **************************************************************************************************************************************;
 *** Erwerbszeiten, und +2 bei Maennern aufgrund von Zeiten in Wehrdienst, bei Frauen inkl. Zahl der Kinder + 1 Jahr Erziehungszeit ***;
@@ -273,7 +281,7 @@ gen everoeffd=0
 replace everoeffd=1 if oe2>0 & oe2<.
 
 
-foreach x in bdp10302x expft13 exppt13 expue13 divorced migrant isced11_13 gebjahr bdp10902x nace13 betr13 everoeffd {
+foreach x in bdp10302x expft13 exppt13 expue13 divorce5 divorce10 migrant isced11_13 gebjahr bdp10902x nace13 betr13 everoeffd {
  replace `x'=. if inlist(`x',-1,-3)
  replace `x'=0 if `x'==-2
  tab1 `x' 
@@ -285,9 +293,9 @@ save "${data}\soep_1_m_f.dta", replace
 use "${data}\\soep_1_m_f.dta", clear
 mi set wide
 mi register imp bdp10302x expft13 exppt13 expue13 isced11_13 bdp10902x betr13 bdp107x
-mi register regular gebjahr vz_13 tz_13 divorced earnings_13 iself13 iunby13 liberal_13 sumkids bcphrfaj sex west migrant z1 z2 everoeffd bdp102x nace1_13 nace2_13 nace3_13 nace4_13 arbeitgeber arbeitnehmer njob manager_13
+mi register regular gebjahr vz_13 tz_13 divorce5 earnings_13 iself13 iunby13 liberal_13 sumkids bcphrfaj sex west migrant z1 z2 everoeffd bdp102x nace1_13 nace2_13 nace3_13 nace4_13 arbeitgeber arbeitnehmer njob manager_13
 
-sum expft13 exppt13 expue13 west sex divorced migrant isced11_13 gebjahr i1111013 self_13 civil_13 sumkids bdphrfak persnr bdp10302x bdp102x bdp10902x betr13 nace13 everoeffd earnings_13 iself13 iunby13 liberal_13 nace1_13 nace2_13 nace3_13 nace4_13 njob manager_13
+sum expft13 exppt13 expue13 west sex divorce5 migrant isced11_13 gebjahr i1111013 self_13 civil_13 sumkids bdphrfak pid bdp10302x bdp102x bdp10902x betr13 nace13 everoeffd earnings_13 iself13 iunby13 liberal_13 nace1_13 nace2_13 nace3_13 nace4_13 njob manager_13
 
 
 * sample GRV
@@ -306,7 +314,7 @@ mi imp chained (pmm, knn(5) omit(arbeitgeber arbeitnehmer njob manager_13)) expf
                (pmm, knn(5) omit(arbeitgeber arbeitnehmer njob manager_13)) isced11_13 
 			   (pmm, knn(5) omit(arbeitgeber arbeitnehmer njob manager_13)) betr13
                (pmm, knn(5) omit(arbeitgeber arbeitnehmer njob manager_13 z1 z2) cond(if sample ==1)) bdp10302x 
-= gebjahr divorced earnings_13 iself13 iunby13 liberal_13 sumkids bcphrfaj sex west migrant z1 z2 everoeffd vz_13 tz_13 nace1_13 nace2_13 nace3_13 nace4_13 arbeitgeber arbeitnehmer njob manager_13
+= gebjahr divorce5 earnings_13 iself13 iunby13 liberal_13 sumkids bcphrfaj sex west migrant z1 z2 everoeffd vz_13 tz_13 nace1_13 nace2_13 nace3_13 nace4_13 arbeitgeber arbeitnehmer njob manager_13
 , add(5) rseed(1234) noisily burnin(100) augment showevery(100) savetrace("${data}\impstats.dta", replace) force;
 
 #delimit cr
@@ -349,8 +357,8 @@ ren _1_isced11_13 educ
 *** Familienvariablen, Haushaltsbrutto und Haushaltsnettoeinkommen
 	
 drop bcnetto bdnetto bdp6501 bdp10103 bdp10105 bdp10107 bdp107 bdp10801 bdp10802 bdp10901  bdp10903 _mi_miss sample sample1
-drop  spellnr spelltyp begin end beginy endy censor remark source x 
-drop n obs iself* ioldy* iwidy* ivbl* icom* iprv* ison*
+*drop  spellnr spelltyp begin end beginy endy censor remark source x 
+drop obs iself* ioldy* iwidy* ivbl* icom* iprv* ison*
 drop betr* oeffd* *erwzeit *vebzeit nace* jobch* manager* vz* tz*  
 
 drop max_rente gap relgap gapp bdp107x bdp10902x arbeitgeber arbeitnehmer br_pa west13 bdp10302x z1 z2 oe2 njob everoeffd  
@@ -384,7 +392,7 @@ ren gebjahr gbja
 
 // 2. Scheidungsindikator im SOEP: divorced
 // ein einfacher rename reicht aus!
-ren divorced spez_scheidung
+ren divorce5 spez_scheidung
 
 // 3. Monate in Arbeitslosigkeit: _1_expue13 -- Bezug auf das vorherige Jahr
 // Hier Jahreswerte in der VSKT allerdings Monatswerte:
@@ -474,7 +482,7 @@ sum $match
 drop *11 *13
 drop *112 *212
 drop migrant i1111012 iunby12 labgro12 stib12 emplst12 expft12 exppt12 expue12 self_12 civil_12 liberal_12 earnings_12
-drop bdp7701 bdp10101 bdp102 bdp10302 bdp10303 bcphrfaj bdphrfak hhnr bdp102x bdp10301 _*_* expp* sumkids 
+drop bdp7701 bdp10101 bdp102 bdp10302 bdp10303 bcphrfaj bdphrfak bdp102x bdp10301 _*_* expp* sumkids 
 
 save "${data}soep_2012_m.dta", replace
 
@@ -483,7 +491,7 @@ save "${data}soep_2012_m.dta", replace
 use "${data}soep_2012_m.dta", clear
 
 keep if verrentet == 0	
-keep $match persnr educ educ_cat 
+keep $match pid educ educ_cat divorce10
  
 save "${data}soep_m_aktiv.dta", replace
 
