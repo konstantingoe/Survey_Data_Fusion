@@ -13,55 +13,55 @@ cap log close
 *------------------------------------------------------------------------------*
 
 
+foreach gender in m f{
+	use "${data}match_test_`gender'.dta", clear 
 
-use "${data}match_test_m.dta", clear 
+	foreach var in spez_ost spez_aussiedler spez_knappe spez_heirat spez_handw spez_selbst spez_ddr {
+		keep if `var' == 0
+		drop `var'
+	}
 
-foreach var in spez_ost spez_aussiedler spez_knappe spez_heirat spez_handw spez_selbst spez_ddr {
-	keep if `var' == 0
-	drop `var'
+	keep ztptrtbejj ja case gbja spez_scheidung exp_al_20_bis* ktsd3 exp_arbeit_20_bis* rentenanspruch_2012 brutto_zens_* alg_j_* psgr rente_total_* em_rente_2012 npv_20*_r_net
+	keep ztptrtbejj psgr ja case gbja spez_scheidung exp_al_20_bis* exp_arbeit_20_bis* rentenanspruch_2012 brutto_zens_* alg_j_* rente_total_* em_rente_2012 npv_20*_r_net
+
+	gen age=2012-gbja
+	recode age (0/35=35) (36/45=45) (46/55=55) (56/102=56), gen(age_g) 
+	 
+
+	gen verrentet = 0
+	replace verrentet = 1 if ztptrtbejj >0 & ztptrtbejj<2013
+
+	tab verrentet if em_rente_2012>0
+	sum em_rente_2012 if verrentet ==1 & em_rente_2012>0
+	sum rente_total_2012 if verrentet==0 & rente_total_2012 >0
+
+
+	gen em_rente=0
+	replace em_rente=1 if em_rente_2012>0 
+
+	 
+	global match gbja spez_scheidung exp_al_20_bis2012 exp_arbeit_20_bis2012 rentenanspruch_2012 brutto_zens_2012 alg_j_2012 rente_total_2012 age_g 
+
+	sum $match
+
+	replace rentenanspruch_2012 = 0 if rentenanspruch_2012 <0 
+
+	egen ltearnings = rowmax(npv_20*_r_net)
+
+	keep $match verrentet em_rente ja case ltearnings  
+
+	save "${data}vskt_`gender'.dta", replace
+
+	// 1. Aktive Bevölkerung 
+
+	use "${data}vskt_`gender'.dta", clear
+
+	keep if verrentet==0 & em_rente==0
+
+	drop verrentet
+
+	save "${data}vskt_`gender'_active.dta", replace
 }
-
-keep ztptrtbejj ja case gbja spez_scheidung exp_al_20_bis* ktsd3 exp_arbeit_20_bis* rentenanspruch_2012 brutto_zens_* alg_j_* psgr rente_total_* em_rente_2012 npv_20*_r_net
-keep ztptrtbejj psgr ja case gbja spez_scheidung exp_al_20_bis* exp_arbeit_20_bis* rentenanspruch_2012 brutto_zens_* alg_j_* rente_total_* em_rente_2012 npv_20*_r_net
-
-gen age=2012-gbja
-recode age (0/35=35) (36/45=45) (46/55=55) (56/102=56), gen(age_g) 
- 
-
-gen verrentet = 0
-replace verrentet = 1 if ztptrtbejj >0 & ztptrtbejj<2013
-
-tab verrentet if em_rente_2012>0
-sum em_rente_2012 if verrentet ==1 & em_rente_2012>0
-sum rente_total_2012 if verrentet==0 & rente_total_2012 >0
-
-
-gen em_rente=0
-replace em_rente=1 if em_rente_2012>0 
-
- 
-global match gbja spez_scheidung exp_al_20_bis2012 exp_arbeit_20_bis2012 rentenanspruch_2012 brutto_zens_2012 alg_j_2012 rente_total_2012 age_g 
-
-sum $match
-
-replace rentenanspruch_2012 = 0 if rentenanspruch_2012 <0 
-
-egen ltearnings = rowmax(npv_20*_r_net)
-
-keep $match verrentet em_rente ja case ltearnings  
-
-save "${data}vskt_m.dta", replace
-
-// 1. Aktive Bevölkerung 
-
-use "${data}vskt_m.dta", clear
-
-keep if verrentet==0 & em_rente==0
-
-drop verrentet
-
-save "${data}vskt_m_active.dta", replace
-
 
 
 *------------------------------------------------------------------------------*
@@ -326,176 +326,183 @@ save "${data}soep_2_m_f.dta", replace
 
 use "${data}soep_2_m_f.dta", clear
 
-*Sampleauswahl SOEP --> Nur Männer aus dem Westen ohne Migrationshintergrund, die gesetzlich versichert sind
+recode sex (1=0) (2=1) //male = 0, female = 1
+lab drop sex
 
-keep if sex == 1
-drop sex
-keep if immiyear == -2
-drop immiyear
-keep if loc1989 == 2 & bdsampreg == 1
-drop loc1989 bdsampreg
-drop if civil_12==1
-drop if liberal_12 == 1
-drop if self_12 == 1
-drop if gebjahr <1935
+global gender_0 m
+global gender_1 f
 
-*** Age_groups erstellen
+*Sampleauswahl SOEP --> Nur Männer/Frauen aus dem Westen ohne Migrationshintergrund, die gesetzlich versichert sind
+forval i = 0/1{
+ preserve	
+	keep if sex == `i'
+	drop sex
+	keep if immiyear == -2
+	drop immiyear
+	keep if loc1989 == 2 & bdsampreg == 1
+	drop loc1989 bdsampreg
+	drop if civil_12==1
+	drop if liberal_12 == 1
+	drop if self_12 == 1
+	drop if gebjahr <1935
 
-gen age=2012-gebjahr
+	*** Age_groups erstellen
 
-recode age (0/35=35) (36/45=45) (46/55=55) (56/102=56), gen(age_g) 
+	gen age=2012-gebjahr
 
-*** ren ISCED
+	recode age (0/35=35) (36/45=45) (46/55=55) (56/102=56), gen(age_g) 
 
-ren _1_isced11_13 educ
-	gen educ_cat = .
-	replace educ_cat = 1 if inlist(educ,0,1,2)
-	replace educ_cat = 2 if educ == 3
-	replace educ_cat = 3 if inlist(educ,4,5)
-	replace educ_cat = 4 if inlist(educ,6,7,8)
-	
-*** Familienvariablen, Haushaltsbrutto und Haushaltsnettoeinkommen
-	
-drop bcnetto bdnetto bdp6501 bdp10103 bdp10105 bdp10107 bdp107 bdp10801 bdp10802 bdp10901  bdp10903 _mi_miss sample sample1
-*drop  spellnr spelltyp begin end beginy endy censor remark source x 
-drop obs iself* ioldy* iwidy* ivbl* icom* iprv* ison*
-drop betr* oeffd* *erwzeit *vebzeit nace* jobch* manager* vz* tz*  
+	*** ren ISCED
 
-drop max_rente gap relgap gapp bdp107x bdp10902x arbeitgeber arbeitnehmer br_pa west13 bdp10302x z1 z2 oe2 njob everoeffd  
-drop *bdp10902* *betr* *bdp107* *isced*
+	ren _1_isced11_13 educ
+		gen educ_cat = .
+		replace educ_cat = 1 if inlist(educ,0,1,2)
+		replace educ_cat = 2 if educ == 3
+		replace educ_cat = 3 if inlist(educ,4,5)
+		replace educ_cat = 4 if inlist(educ,6,7,8)
+		
+	*** Familienvariablen, Haushaltsbrutto und Haushaltsnettoeinkommen
+		
+	drop bcnetto bdnetto bdp6501 bdp10103 bdp10105 bdp10107 bdp107 bdp10801 bdp10802 bdp10901  bdp10903 _mi_miss sample sample1
+	*drop  spellnr spelltyp begin end beginy endy censor remark source x 
+	drop obs iself* ioldy* iwidy* ivbl* icom* iprv* ison*
+	drop betr* oeffd* *erwzeit *vebzeit nace* jobch* manager* vz* tz*  
 
-
-* Was auch immer hier getrieben wurde es war unfug:
-* Jetzt einmal neu und übersichtlich
-
-///////// Variablen aus der VSKT, die als Matching-Variablen fungieren können 
-/// gbja --> Geburtsjahr
-/// spez_scheidung --> Scheidung Ja/Nein
-/// exp_al_20_bis2002 -- exp_al_20_bis2015 --> Monate in Arbeitslosigkeit ohne 2003
-/// exp_arbeit_20_bis2002 -- exp_arbeit_20_bis2015 --> Monate in Arbeit ohne 2003
-/// rentenanspruch_2012 --> Rentenanwartschaften
-/// brutto_zens_1998 -- brutto_zens_2015  ( wir nehmen nur 2012) 
-/// --> Individelles Arbeitseinkommen bis zur Beitragsbemessungsgrenze der jeweiligen Jahre, bspw. 2012: 67.200 im Westen
-/// alg_j_1952 -- 2015 --> Arbeitslosengeld  
-/// rente_total_1998 -- 2015 --> jährliche Rentenbezüge 
-////////
+	drop max_rente gap relgap gapp bdp107x bdp10902x arbeitgeber arbeitnehmer br_pa west13 bdp10302x z1 z2 oe2 njob everoeffd  
+	drop *bdp10902* *betr* *bdp107* *isced*
 
 
-* Diese Variablen sind auch im SOEP zu finden insbesondere 2012 unser einziges Jahr,
-* zu dem es Rentenanwartschaftsinfos gibt
-// für das Data-Fusing sollten keine missings in den Matching Variablen enthalten sein
+	* Was auch immer hier getrieben wurde es war unfug:
+	* Jetzt einmal neu und übersichtlich
+
+	///////// Variablen aus der VSKT, die als Matching-Variablen fungieren können 
+	/// gbja --> Geburtsjahr
+	/// spez_scheidung --> Scheidung Ja/Nein
+	/// exp_al_20_bis2002 -- exp_al_20_bis2015 --> Monate in Arbeitslosigkeit ohne 2003
+	/// exp_arbeit_20_bis2002 -- exp_arbeit_20_bis2015 --> Monate in Arbeit ohne 2003
+	/// rentenanspruch_2012 --> Rentenanwartschaften
+	/// brutto_zens_1998 -- brutto_zens_2015  ( wir nehmen nur 2012) 
+	/// --> Individelles Arbeitseinkommen bis zur Beitragsbemessungsgrenze der jeweiligen Jahre, bspw. 2012: 67.200 im Westen
+	/// alg_j_1952 -- 2015 --> Arbeitslosengeld  
+	/// rente_total_1998 -- 2015 --> jährliche Rentenbezüge 
+	////////
 
 
-// 1. Geburtsjahr im SOEP: gebjahr
-// ein einfacher rename reicht aus!
-ren gebjahr gbja
-
-// 2. Scheidungsindikator im SOEP: divorced
-// ein einfacher rename reicht aus!
-ren divorce5 spez_scheidung
-
-// 3. Monate in Arbeitslosigkeit: _1_expue13 -- Bezug auf das vorherige Jahr
-// Hier Jahreswerte in der VSKT allerdings Monatswerte:
-ren _1_expue13 exp_al_20_bis2012
-replace exp_al_20_bis2012 = exp_al_20_bis2012 *12
-
-// 4. Monate in Arbeit
-// auch hier wieder imputierte 2013 Werte nehmen:
-gen exppt13_p = 0.5*_1_exppt13 
-egen exp_arbeit_20_bis2012 = rowtotal(exppt13_p _1_expft13)
-replace exp_arbeit_20_bis2012 = exp_arbeit_20_bis2012*12
-
-// 5. Rentenanwartschaften
-// wurden oben imputiert: _1_bdp10302x 
-ren _1_bdp10302x rentenanspruch_2012
-
-// 6. Individelles Arbeitseinkommen bis zur Beitragsbemessungsgrenze
-// Im SOEP i1111012 --> earnings_12 oben erstellt bezieht sich nicht auf Vorjahr???
+	* Diese Variablen sind auch im SOEP zu finden insbesondere 2012 unser einziges Jahr,
+	* zu dem es Rentenanwartschaftsinfos gibt
+	// für das Data-Fusing sollten keine missings in den Matching Variablen enthalten sein
 
 
-gen brutto_zens_2012 = min(earnings_13, 67200)
+	// 1. Geburtsjahr im SOEP: gebjahr
+	// ein einfacher rename reicht aus!
+	ren gebjahr gbja
 
-// 7. Arbeitslosengeld
-// im SOEP iunby13, da bezug auf das vorherige Jahr
-// eigentlich noch einschränkung wegen Kinder aber da hier nur Männer ist sumkids 0
-*replace alg_j_2012 = iunby12/0.67*.6 if d1110712 > 0 & d1110712<.
+	// 2. Scheidungsindikator im SOEP: divorced
+	// ein einfacher rename reicht aus!
+	ren divorce5 spez_scheidung
 
-gen alg_j_2012 = iunby13 
+	// 3. Monate in Arbeitslosigkeit: _1_expue13 -- Bezug auf das vorherige Jahr
+	// Hier Jahreswerte in der VSKT allerdings Monatswerte:
+	ren _1_expue13 exp_al_20_bis2012
+	replace exp_al_20_bis2012 = exp_al_20_bis2012 *12
 
-// 8. Jährliche Rentenbezüge
-// im SOEP igrv13 für gesetzlich rentenversicherte
+	// 4. Monate in Arbeit
+	// auch hier wieder imputierte 2013 Werte nehmen:
+	gen exppt13_p = 0.5*_1_exppt13 
+	egen exp_arbeit_20_bis2012 = rowtotal(exppt13_p _1_expft13)
+	replace exp_arbeit_20_bis2012 = exp_arbeit_20_bis2012*12
 
-ren igrv113 rente_total_2012
-replace rente_total_2012 = 0 if rente_total_2012<0
+	// 5. Rentenanwartschaften
+	// wurden oben imputiert: _1_bdp10302x 
+	ren _1_bdp10302x rentenanspruch_2012
 
-/// alle relevanten Variablen harmonisiert und von NA bereinigt ///
-
-********************************************************************************
-********** Populationseinschränkungen für genaues data fusing ******************
-********************************************************************************
-
-* zunächst 3 Subpopulationen für Männer in 2012:
-
-* 1. Aktive mit genauen Rentenanwartschaftsangaben
-
-* 2. Aktive mit genauen und ungenauen Rentenanwartschaftsangaben 
-* hier müssen in einem Schritt nach dem data.fusing die matches verglichen werden
-
-* 3. Passive und sonstige Rentner
-
-/// Aktive Population / passive Population
-
-gen verrentet = 0
-replace verrentet = 1 if (rente_total_2012>0 & rente_total_2012<.) ///
-					   | (iciv113>0 & iciv113<.) 				  ///
-					   | (iguv113>0 & iguv113<.) 
-
-replace verrentet=1 if bdp102==3
-replace verrentet=1 if stib12==13	
-
-* Im SOEP können Erwerbsminderungsrenten nicht direkt erkannt werden, 
-* nur über die Altersabfrage
-
-gen em_rente = 0
-replace em_rente = 1 if verrentet==1 & age<60
-
-gen rente_ges = 0
-replace rente_ges = 1 if verrentet==1 | em_rente==1
-					  					   
-										   
-/// 1. Aktive Population mit genauen angaben auf der bdp10301
-
-gen active_genau = 0
-replace active_genau = 1 if bdp10301 ==1 & verrentet==0
-
-/// 2. Aktive Population mit genauen und ungenauen Angaben: verrentet==0
-
-/// 3. Passive Population: verrentet==1
-
-/// Summary über die matching variablen
-global match gbja spez_scheidung exp_al_20_bis2012 exp_arbeit_20_bis2012 rentenanspruch_2012 brutto_zens_2012 alg_j_2012 rente_total_2012 age_g 
-
-sum $match
-
-*** Cleaning:
-
-drop *11 *13
-drop *112 *212
-drop migrant i1111012 iunby12 labgro12 stib12 emplst12 expft12 exppt12 expue12 self_12 civil_12 liberal_12 earnings_12
-drop bdp7701 bdp10101 bdp102 bdp10302 bdp10303 bcphrfaj bdphrfak bdp102x bdp10301 _*_* expp* sumkids 
-
-save "${data}soep_2012_m.dta", replace
-
-*** für 1. : Aktive Bevölkerung 
-
-use "${data}soep_2012_m.dta", clear
-
-keep if verrentet == 0	
-keep $match pid educ educ_cat divorce10
- 
-save "${data}soep_m_aktiv.dta", replace
+	// 6. Individelles Arbeitseinkommen bis zur Beitragsbemessungsgrenze
+	// Im SOEP i1111012 --> earnings_12 oben erstellt bezieht sich nicht auf Vorjahr???
 
 
+	gen brutto_zens_2012 = min(earnings_13, 67200)
+
+	// 7. Arbeitslosengeld
+	// im SOEP iunby13, da bezug auf das vorherige Jahr
+	// eigentlich noch einschränkung wegen Kinder aber da hier nur Männer ist sumkids 0
+	*replace alg_j_2012 = iunby12/0.67*.6 if d1110712 > 0 & d1110712<.
+
+	gen alg_j_2012 = iunby13 
+
+	// 8. Jährliche Rentenbezüge
+	// im SOEP igrv13 für gesetzlich rentenversicherte
+
+	ren igrv113 rente_total_2012
+	replace rente_total_2012 = 0 if rente_total_2012<0
+
+	/// alle relevanten Variablen harmonisiert und von NA bereinigt ///
+
+	********************************************************************************
+	********** Populationseinschränkungen für genaues data fusing ******************
+	********************************************************************************
+
+	* zunächst 3 Subpopulationen für Männer in 2012:
+
+	* 1. Aktive mit genauen Rentenanwartschaftsangaben
+
+	* 2. Aktive mit genauen und ungenauen Rentenanwartschaftsangaben 
+	* hier müssen in einem Schritt nach dem data.fusing die matches verglichen werden
+
+	* 3. Passive und sonstige Rentner
+
+	/// Aktive Population / passive Population
+
+	gen verrentet = 0
+	replace verrentet = 1 if (rente_total_2012>0 & rente_total_2012<.) ///
+						   | (iciv113>0 & iciv113<.) 				  ///
+						   | (iguv113>0 & iguv113<.) 
+
+	replace verrentet=1 if bdp102==3
+	replace verrentet=1 if stib12==13	
+
+	* Im SOEP können Erwerbsminderungsrenten nicht direkt erkannt werden, 
+	* nur über die Altersabfrage
+
+	gen em_rente = 0
+	replace em_rente = 1 if verrentet==1 & age<60
+
+	gen rente_ges = 0
+	replace rente_ges = 1 if verrentet==1 | em_rente==1
+											   
+											   
+	/// 1. Aktive Population mit genauen angaben auf der bdp10301
+
+	gen active_genau = 0
+	replace active_genau = 1 if bdp10301 ==1 & verrentet==0
+
+	/// 2. Aktive Population mit genauen und ungenauen Angaben: verrentet==0
+
+	/// 3. Passive Population: verrentet==1
+
+	/// Summary über die matching variablen
+	global match gbja spez_scheidung exp_al_20_bis2012 exp_arbeit_20_bis2012 rentenanspruch_2012 brutto_zens_2012 alg_j_2012 rente_total_2012 age_g 
+
+	sum $match
+
+	*** Cleaning:
+
+	drop *11 *13
+	drop *112 *212
+	drop migrant i1111012 iunby12 labgro12 stib12 emplst12 expft12 exppt12 expue12 self_12 civil_12 liberal_12 earnings_12
+	drop bdp7701 bdp10101 bdp102 bdp10302 bdp10303 bcphrfaj bdphrfak bdp102x bdp10301 _*_* expp* sumkids 
+
+	save "${data}soep_2012_${gender_`i'}.dta", replace
+
+	*** für 1. : Aktive Bevölkerung 
+
+	use "${data}soep_2012_${gender_`i'}.dta", clear
+
+	keep if verrentet == 0	
+	keep $match pid educ educ_cat divorce10
+	 
+	save "${data}soep_${gender_`i'}_aktiv.dta", replace
+ restore
+}
 
 
 

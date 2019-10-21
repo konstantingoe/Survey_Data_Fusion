@@ -5,8 +5,8 @@ set more off
 cap log close 
 *log using "${log}passive.log", replace
 
-global maxyear 2016
-global maxyear2 2017
+global maxyear 2017
+global maxyear2 2018
 
 ********************************************************************************
 ********************************************************************************
@@ -14,106 +14,107 @@ global maxyear2 2017
 ********************************************************************************
 ********************************************************************************
 
+foreach gender in m f{
+	use "${data}match_test_`gender'.dta", clear 
+	 
+	foreach var in spez_ost spez_aussiedler spez_knappe spez_heirat spez_handw spez_selbst spez_ddr {
+		keep if `var' == 0
+		drop `var'
+	}
 
-use "${data}match_test_m.dta", clear 
+	keep hrf weight jahr_rente ja case gbja spez_scheidung exp_al_20_bis* rente_j_* ktsd3 exp_arbeit_20_bis* brutto_zens_* alg_j_* rente_total_* npv_2060_r_net
 
-foreach var in spez_ost spez_aussiedler spez_knappe spez_heirat spez_handw spez_selbst spez_ddr {
-	keep if `var' == 0
-	drop `var'
+	* Erstellung der Variablen in welchem Jahr Renteneintritt mit vollständiger Kontoklärung
+
+	* diejenigen Personen, die 1995 in Rente gegangen sind (Ausschliesslich Kohorte 1935)
+	gen renteneintritt_1995 = 0
+	replace renteneintritt_1995 = 1 if rente_j_1995 >0 
+
+	*** alle anderen Renteneintritte pro Jahr ab 1996
+	global r_1996 "& renteneintritt_1995==0"
+
+	forval i=1997 (1) $maxyear {
+
+	local j= `i' -1
+
+	global r_`i' "${r_`j'} & renteneintritt_`j'==0"
+
+	}
+	 
+	forval i=1996 (1) $maxyear {
+
+	disp `i'
+
+	gen renteneintritt_`i' = 0
+	replace renteneintritt_`i' = 1 if rente_j_`i' >0 ${r_`i'} 
+
+	}
+
+	save "${data}vskt_passiv_panel_`gender'1.dta", replace
+	 
+	****
+
+	* Erfolgreiche generierung von Renteneintrittsinformationen 
+
+	* Die Frage ist jetzt: Sollen diejenigen Renteneintritte an die jeweiligen SOEP 
+	* Jahre angespielt werden? Also VSKT in 1995 verrentete Personen (Kohorte 1935) 
+	* an alle im SOEP 1995 verrenteten Personen minus alle die vor 1935 geboren wurden?
+
+	* und das für alle Jahre bis 2015? in der VSKT sind das halt immer nur im Schnitt
+	* 250 Fälle, das heisst im SOEP noch weniger und dann wird der Suchalgorithmus mit 
+	* zu wenigen Fällen gespeist, eventuell.
+
+
+	* Erstellen eines fiktiven panels
+
+	use "${data}vskt_passiv_panel_`gender'1.dta", clear 
+
+	* behalte nur passive population mit geklärten Konten
+	* renteneintritt_jjjj ist die Variable die eindeutig die Geburtskohorten bei 
+	* Renteneintritt verortet
+
+	* rentenbeginn die Variable, die den Rentenbeginn einer Person datiert 
+
+	global w_1996 "renteneintritt_1995==1"
+
+	forval i=1997 (1) $maxyear2 {
+
+	local j= `i' -1
+
+	global w_`i' "${w_`j'} | renteneintritt_`j'==1"
+
+	}
+
+	keep if ${w_${maxyear2}}
+
+	*** jetzt haben wir ein Datensatz geschaffen in dem alle verrenteten Personen bis 
+	*** einschließlich 2017 vorhanden sind
+
+	*** crossvalidation of rentenbeginn konsistent ist:
+		gen rentenbeginn = .
+
+	forval i=1995 (1) $maxyear {
+
+		replace rentenbeginn = `i' if renteneintritt_`i'==1 
+
+	}
+
+
+	*** Variable erstellen, die für alle Personen den letzten bekannten Rentenwert beinhaltet
+	*** Über diese wird dann gematcht
+
+	egen rente_${maxyear}_gesamt = rowmax(rente_j_*)
+
+
+	save "${data}vskt_passiv_panel_`gender'2.dta", replace
+
+	recode gbja (1935/1940=40) (1941/1945=45) (1946/1950=50) (1951/1955=55) (1956/1960=60), gen(gbja_cat) 
+
+	egen exp_arbeit = rowmax(exp_arbeit*)
+	egen unempben = rowmax(alg_j_*)
+
+	save "${data}vskt_passiv_panel_`gender'.dta", replace
 }
-
-keep hrf weight jahr_rente ja case gbja spez_scheidung exp_al_20_bis* rente_j_* ktsd3 exp_arbeit_20_bis* brutto_zens_* alg_j_* rente_total_* npv_2060_r_net
-
-* Erstellung der Variablen in welchem Jahr Renteneintritt mit vollständiger Kontoklärung
-
-* diejenigen Personen, die 1995 in Rente gegangen sind (Ausschliesslich Kohorte 1935)
-gen renteneintritt_1995 = 0
-replace renteneintritt_1995 = 1 if rente_j_1995 >0 
-
-*** alle anderen Renteneintritte pro Jahr ab 1996
-global r_1996 "& renteneintritt_1995==0"
-
-forval i=1997 (1) $maxyear {
-
-local j= `i' -1
-
-global r_`i' "${r_`j'} & renteneintritt_`j'==0"
-
-}
- 
-forval i=1996 (1) $maxyear {
-
-disp `i'
-
-gen renteneintritt_`i' = 0
-replace renteneintritt_`i' = 1 if rente_j_`i' >0 ${r_`i'} 
-
-}
-
-save "${data}vskt_passiv_panel_m1.dta", replace
- 
-****
-
-* Erfolgreiche generierung von Renteneintrittsinformationen 
-
-* Die Frage ist jetzt: Sollen diejenigen Renteneintritte an die jeweiligen SOEP 
-* Jahre angespielt werden? Also VSKT in 1995 verrentete Personen (Kohorte 1935) 
-* an alle im SOEP 1995 verrenteten Personen minus alle die vor 1935 geboren wurden?
-
-* und das für alle Jahre bis 2015? in der VSKT sind das halt immer nur im Schnitt
-* 250 Fälle, das heisst im SOEP noch weniger und dann wird der Suchalgorithmus mit 
-* zu wenigen Fällen gespeist, eventuell.
-
-
-* Erstellen eines fiktiven panels
-
-use "${data}vskt_passiv_panel_m1.dta", clear 
-
-* behalte nur passive population mit geklärten Konten
-* renteneintritt_jjjj ist die Variable die eindeutig die Geburtskohorten bei 
-* Renteneintritt verortet
-
-* rentenbeginn die Variable, die den Rentenbeginn einer Person datiert 
-
-global w_1996 "renteneintritt_1995==1"
-
-forval i=1997 (1) $maxyear2 {
-
-local j= `i' -1
-
-global w_`i' "${w_`j'} | renteneintritt_`j'==1"
-
-}
-
-keep if ${w_${maxyear2}}
-
-*** jetzt haben wir ein Datensatz geschaffen in dem alle verrenteten Personen bis 
-*** einschließlich 2015 vorhanden sind
-
-*** crossvalidation of rentenbeginn konsistent ist:
-	gen rentenbeginn = .
-
-forval i=1995 (1) $maxyear {
-
-	replace rentenbeginn = `i' if renteneintritt_`i'==1 
-
-}
-
-
-*** Variable erstellen, die für alle Personen den letzten bekannten Rentenwert beinhaltet
-*** Über diese wird dann gematcht
-
-egen rente_${maxyear}_gesamt = rowmax(rente_j_*)
-
-
-save "${data}vskt_passiv_panel_m2.dta", replace
-
-recode gbja (1935/1940=40) (1941/1945=45) (1946/1950=50) (1951/1955=55) (1956/1960=60), gen(gbja_cat) 
-
-egen exp_arbeit = rowmax(exp_arbeit*)
-egen unempben = rowmax(alg_j_*)
-
-save "${data}vskt_passiv_panel_m.dta", replace
 ********************************************************************************
 ********************************************************************************
 *************************** SOEP ***********************************************
@@ -154,6 +155,7 @@ global w_13  bd
 global w_14  be
 global w_15  bf
 global w_16  bg
+global w_17  bh
 
 global j_96 95 
 global j_97 96
@@ -176,15 +178,16 @@ global j_13 12
 global j_14 13
 global j_15 14
 global j_16 15
+global j_17 16
 
 
-use pid gebjahr sex loc1989 immiyear using  "${original_wide}ppath.dta", clear
-		sort pid
+use persnr gebjahr sex loc1989 immiyear using  "${original_wide}ppfad.dta", clear
+		sort persnr
 		keep if immiyear == -2
 		keep if loc1989 == 2
 		drop immiyear loc1989
 
-		merge 1:1 pid using "${original_wide_raw}lpequiv", keepus(pid igrv195) nogen keep(3)
+		merge 1:1 persnr using "${original_wide}lpequiv", keepus(persnr igrv195) nogen keep(3)
 
 		keep if gebjahr>1934 & gebjahr<=1935  & igrv195 >0
 
@@ -195,18 +198,18 @@ save "${data}soep_passive_95", replace
 
  local year = 1936
  
-foreach var in 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
+foreach var in 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17{
 
-		use pid gebjahr sex loc1989 immiyear using  "${original_wide}ppath.dta", clear
-		sort pid
+		use persnr gebjahr sex loc1989 immiyear using  "${original_wide}ppfad.dta", clear
+		sort persnr
 		keep if immiyear == -2
 		keep if loc1989 == 2
 		drop immiyear loc1989
 	
-		merge 1:1 pid using "${original_wide_raw}\${w_`var'}pequiv", keepus(pid igrv1`var') nogen keep(3)
+		merge 1:1 persnr using "${original_wide}\${w_`var'}pequiv", keepus(persnr igrv1`var') nogen keep(3)
 
 		keep if gebjahr>1934 & gebjahr<=`year'  & igrv1`var' >0 
-		merge 1:1 pid using "${data}soep_passive_${j_`var'}"
+		merge 1:1 persnr using "${data}soep_passive_${j_`var'}"
 
 		*** wenn _merge==1 dann Renteneintritt
 		*** wenn _merge==2 dann Dropout -> moeglicherweise alle dropouts vor dem vollendeten 65 Lebensjahr ausschliessen -> Timm fragen
@@ -229,7 +232,7 @@ foreach var in 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
 
 	
 	
-foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
+foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17{
 	
 	replace renteneintritt_`var' = 0 if renteneintritt_`var' == .
  
@@ -271,6 +274,7 @@ global j_2013 13
 global j_2014 14
 global j_2015 15
 global j_2016 16
+global j_2017 17
 
 
 gen renteneintritt_ges = .
@@ -289,10 +293,10 @@ lab drop sex
 
 * get the weights from every year where renteneintritt is true!
 
-merge 1:1 pid using "${original_wide_raw}phrf", keepus(pid *phrf) keep(3) nogen
+merge 1:1 persnr using "${original_wide}phrf", keepus( persnr *phrf) keep(3) nogen
 gen pwgt = 0
 
-foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
+foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17{
 	
 	replace pwgt = ${w_`var'}phrf if renteneintritt_`var'== 1 
 }
@@ -310,14 +314,14 @@ save "${data}soep_passive_full_1", replace
 
 use "${data}soep_passive_full_1", clear
 *84 85 86 87 88 89 90 91 92 93 94 
-foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
+foreach var in 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17{
 
-merge 1:1 pid using "${original_wide_raw}\${w_`var'}pgen", keepus(pid isced11_`var' exppt`var' expft`var' expue`var') keep(1 3) nogen
+merge 1:1 persnr using "${original_wide}\${w_`var'}pgen", keepus(persnr isced11_`var' exppt`var' expft`var' expue`var') keep(1 3) nogen
 
 }
 
-foreach i in 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16{
-	merge 1:1 pid using "${original_wide_raw}/${w_`i'}pequiv", keepus(pid i11110`wave' iself`wave' iunby`wave') keep(1 3) nogenerate
+foreach i in 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17{
+	merge 1:1 persnr using "${original_wide}/${w_`i'}pequiv", keepus(persnr i11110`wave' iself`wave' iunby`wave') keep(1 3) nogenerate
 	gen earnings_`i' = max(0,i11110`i' - iself`i')
 
 }
@@ -353,22 +357,9 @@ replace expunempl = expunempl*12
 
 save "${data}soep_passive_full_div", replace 
 
-* divorced
-/*
-*** Info fuer jemals geschieden sammeln ***;
-use "${original_wide}biomarsy",clear
-drop if beginy > $maxyear
-gen x=0
-replace x=1 if spelltyp==3 //| spelltyp==5
-egen divorced=max(x), by(persnr)
-bysort persnr: gen n=_n
-keep if n==1
-sort persnr
-save "${data}divorced.dta", replace
+use "${data}soep_passive_full_div", clear
 
-use "${data}soep_passive_full_div", clear
-*/
-use "${data}soep_passive_full_div", clear
+ren persnr pid
 
 preserve 
 do "C:\Users\kgoebler\Documents\Survey_Data_Fusion\2_divorce_info.do"
@@ -412,11 +403,14 @@ drop if education ==.
 
 save "${data}soep_passive_ges", replace 
 
-keep if sex == 0
-drop sex
-save "${data}soep_passive_m", replace 
+global gender_0 m
+global gender_1 f
 
-
-*** was ist da 2002 passiert liegt an der Originalvariable!
-*** und warum 2011 und 2012 so starke Ausreißer?
+forval i = 0/1{
+	preserve
+	keep if sex == `i'
+	drop sex
+	save "${data}soep_passive_${gender_`i'}", replace 
+	restore
+}
 
