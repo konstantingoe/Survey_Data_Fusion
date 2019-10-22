@@ -11,6 +11,19 @@ maxyear <- 2012
 vskt.ma <- import(paste(path.new, "vskt_m_active.dta" , sep = "/"), setclass = "data.table")
 soep.ma <- import(paste(path.new, "soep_m_aktiv.dta" , sep = "/"), setclass = "data.table")
 
+vskt.fa <- import(paste(path.new, "vskt_f_active.dta" , sep = "/"), setclass = "data.table")
+soep.fa <- import(paste(path.new, "soep_f_aktiv.dta" , sep = "/"), setclass = "data.table")
+
+soep.ma$sex <- 0
+soep.fa$sex <- 1
+vskt.ma$sex <- 0
+vskt.fa$sex <- 1
+
+soep.ma <- bind_rows(soep.ma,soep.fa)
+vskt.ma <- bind_rows(vskt.ma,vskt.fa)
+
+rm(vskt.fa,soep.fa)
+
 
 soep.ma <- soep.ma %>% 
   mutate(divorced = factor(spez_scheidung,ordered = F)) %>% 
@@ -19,7 +32,8 @@ soep.ma <- soep.ma %>%
   mutate(age = maxyear -gbja) %>% 
   mutate(entitlement = rentenanspruch_2012) %>% 
   mutate(income = brutto_zens_2012) %>% 
-  mutate(unempben = alg_j_2012) %>% 
+  mutate(unempben = alg_j_2012,
+         sex = factor(sex, ordered = F)) %>% 
   select(-spez_scheidung, -rente_total_2012, -exp_arbeit_20_bis2012, -exp_al_20_bis2012, -rentenanspruch_2012, -brutto_zens_2012, -alg_j_2012)
 vskt.ma <- vskt.ma %>% 
   mutate(divorced = factor(spez_scheidung,ordered = F)) %>% 
@@ -28,7 +42,8 @@ vskt.ma <- vskt.ma %>%
   mutate(age = maxyear -gbja) %>% 
   mutate(entitlement = rentenanspruch_2012) %>% 
   mutate(income = brutto_zens_2012) %>% 
-  mutate(unempben = alg_j_2012) %>% 
+  mutate(unempben = alg_j_2012,
+         sex = factor(sex, ordered = F)) %>% 
   select(-spez_scheidung, -em_rente, -rente_total_2012, -exp_arbeit_20_bis2012, -exp_al_20_bis2012, -rentenanspruch_2012, -brutto_zens_2012, -alg_j_2012)
 
 soep.ma <- na.omit(soep.ma)
@@ -38,7 +53,7 @@ soep.ma <- na.omit(soep.ma)
 #### Random Forests #####
 
 #SOEP classification tree for variable importance
-forestSOEP <- randomForest(factor(educ, ordered = T) ~ age + entitlement + expunempl + expwork + unempben + income + divorced, data = soep.ma, importance = T, corr.bias = T)
+forestSOEP <- randomForest(factor(educ, ordered = T) ~ age + entitlement + expunempl + expwork + unempben + income + divorced + sex, data = soep.ma, importance = T, corr.bias = T)
 pdf('forestSOEPactive.pdf',height=4, width=6)
 varImpPlot(forestSOEP,type=2, main = "") # , labels=c("Ever divorced", "Unempl. benefit", "Exp. unempl.", "YoB", "Work exp.", "Pension entitl." ))
 dev.off()
@@ -46,7 +61,7 @@ dev.off()
 barplot(t(VI_FA/sum(VI_FA)))
 
 #VSKT regression tree for variable importance 
-forestVSKT <- randomForest(ltearnings ~ age + entitlement + expunempl + expwork + unempben + income + divorced, data = vskt.ma, importance = T, corr.bias = T)
+forestVSKT <- randomForest(ltearnings ~ age + entitlement + expunempl + expwork + unempben + income + divorced + sex, data = vskt.ma, importance = T, corr.bias = T, na.action = na.omit)
 pdf('forestVSKTpassiv.pdf',height=4, width=6)
 varImpPlot(forestVSKT,type=2, main = "") #, labels = c("Ever divorce", "Exp. unempl.", "Unempl. benefit", "YoB", "Work exp.", "Pension entitl."))
 dev.off()
@@ -85,7 +100,7 @@ temp3 <- hellinger(temp1$expunempl, temp2$expunempl, method = 1)
 ##### Prepare for matching #####
 
 (Z.vars <- setdiff(names(vskt.ma), names(soep.ma))) #available just in VSKT
-(donclass <- "divorced") #donation classes
+(donclass <- c("sex", "divorced")) #donation classes
 
 
 ##### Matching  #####
@@ -95,7 +110,7 @@ distancematch1 <- distancehd(A=soep.ma,B=vskt.ma, distfun = "minimax")
 
 distancematch2 <- distancehd(A=soep.ma,B=vskt.ma,distfun = "Mahalanobis")
 
-randommatch <- randomhd(A=soep.ma,B=vskt.ma, distfun = "Gower", cutdon = "min")
+#randommatch <- randomhd(A=soep.ma,B=vskt.ma, distfun = "Gower", cutdon = "min")
 
 xz.vars <- c(X.mtc, "ltearnings")
 xz.varsl <- as.list(c(X.mtc, "Lifetime earnings" = "ltearnings"))
