@@ -125,20 +125,24 @@ kstest2 <- sapply(xz.varsl, function(t) ks.test(select(
     vskt.ma, one_of(xz.vars))[,t], 
   alternative = "two.sided")$statistic)
 
-kstest3 <- sapply(xz.varsl, function(t) ks.test(select(
-  randommatch, one_of(xz.vars))[,t], select(
-    vskt.ma, one_of(xz.vars))[,t], 
-  alternative = "two.sided")$statistic)
+#kstest3 <- sapply(xz.varsl, function(t) ks.test(select(
+#  randommatch, one_of(xz.vars))[,t], select(
+#    vskt.ma, one_of(xz.vars))[,t], 
+#  alternative = "two.sided")$statistic)
 
-kstestfinal <- round(rbind(kstest1, kstest2, kstest3),digits = 4)
-rownames(kstestfinal) <- c( "Minimax", "Mahalanobis", "Gower (random)")
+#kstestfinal <- round(rbind(kstest1, kstest2, kstest3),digits = 4)
+#rownames(kstestfinal) <- c( "Minimax", "Mahalanobis", "Gower (random)")
+#ks.cutofflevel <- 1.224 * sqrt((nrow(soep.ma) + nrow(vskt.ma))/(nrow(soep.ma)*nrow(vskt.ma)))
+
+kstestfinal <- round(rbind(kstest1, kstest2),digits = 4)
+rownames(kstestfinal) <- c( "Minimax", "Mahalanobis")
 ks.cutofflevel <- 1.224 * sqrt((nrow(soep.ma) + nrow(vskt.ma))/(nrow(soep.ma)*nrow(vskt.ma)))
 
 #multivariate level 4 results:
 
 mvartest1 <- cramer.test(as.matrix(select(distancematch1, one_of(xz.vars))), as.matrix(select(vskt.ma, one_of(xz.vars))))
 mvartest2 <- cramer.test(as.matrix(select(distancematch2, one_of(xz.vars))), as.matrix(select(vskt.ma, one_of(xz.vars))))
-mvartest3 <- cramer.test(as.matrix(select(randommatch, one_of(xz.vars))), as.matrix(select(vskt.ma, one_of(xz.vars))))
+#mvartest3 <- cramer.test(as.matrix(select(randommatch, one_of(xz.vars))), as.matrix(select(vskt.ma, one_of(xz.vars))))
 
 #save(mvartest1, file="applicramer1")
 #save(mvartest2, file="applicramer2")
@@ -160,8 +164,8 @@ stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distan
 
 #### Deploy final use file ####
 
-save(distancematch2, file="active_first_stage.RDA")
-write.dta(distancematch2, file = "active_first_stage.dta")
+save(distancematch1, file="active_first_stage.RDA")
+write.dta(distancematch1, file = "active_first_stage.dta")
 
 #### Finished #####
 
