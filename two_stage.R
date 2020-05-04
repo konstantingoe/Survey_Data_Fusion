@@ -78,7 +78,101 @@ dev.off()
 barplot(t(VI_FB/sum(VI_FB)))
 
 #### Matching variable quality ####
- 
+
+#choose set of matchingvariables:	
+#one could discuss whether uneployment benefits should be left out... keep it for now and check X_M quality	
+X.mtc <- c("rente_2016_gesamt","gbja" , "unempben", "expwork", "expunempl")	
+names(X.mtc) <- c("Pension entitl.", "YoB", "Unempl. benef.", "Work exp." , "Exp. unempl.")	
+
+# Hellinger Distance for matching variable quality	
+A.mtc <- select(soep.mp, one_of(X.mtc))	
+B.mtc <- select(vskt.mp, one_of(X.mtc))	
+
+helldist <- unlist(nullToNA(sapply(X.mtc, function(y) tryCatch({hellinger(A.mtc[,y],B.mtc[,y], lower = 0, upper = Inf, method = 1) }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")}))))	
+
+#Latex table	
+stargazer(helldist, out = "X_m_VSKT_SOEP.tex", title = "Potential set of matching variables with corresponding Hellinger distances",	
+          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population", label = "X_m_application", notes.align = "l")	
+
+#check unemployment shares:	
+sum(A.mtc$expunempl>0)/nrow(A.mtc) # 73% in the passive SOEP population have never been unemployed	
+sum(B.mtc$expunempl>0)/nrow(B.mtc) # 42% in the VSKT have never been unemployed	
+
+sum(A.mtc$unempben>0)/ sum(A.mtc$expunempl>0) #only 65% of individualy with unemployment spells in the SOEP also report unemployment benefits	
+sum(B.mtc$unempben>0) / sum(B.mtc$expunempl>0) #99% in the VSKT who experienced unemployment spells also report unemployment benefits	
+
+#Experience in unemployment has too many zeros...integral not calculable	
+#take only positive values and use those... note that we ommit the number of zeros, which could be potentially different	
+temp1 <- filter(A.mtc, A.mtc$expunempl>0)	
+temp2 <- filter(B.mtc, B.mtc$expunempl>0)	
+temp3 <- hellinger(temp1$expunempl, temp2$expunempl, method = 1)	
+
+##### Prepare for matching #####	
+
+(X.mtc <- c("rente_2016_gesamt", "gbja", "expwork", "expunempl", "unempben")) #final X_M	
+names(X.mtc) <- c("Pension entitl.", "YoB", "Work exp." , "Exp. unempl.", "Unempl.ben.")	
+
+(Z.vars <- setdiff(names(vskt.mp), names(soep.mp))) #available just in VSKT	
+(donclass <- c("divorced", "sex")) #donation classes	
+
+
+##### Matching  #####	
+# one request attempt distance, not random matching with Hungaran algorithm in order to	
+# make sure that not too many of the same donors are assigned to the SOEP receivers 	
+
+#randommatch1 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 	
+#randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 	
+#randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 	
+distancematch.passive1 <- distancehd(A=soep.mp,B=vskt.mp, distfun = "minimax")	
+
+distancematch.passive2 <- distancehd(A=soep.mp,B=vskt.mp,distfun = "Mahalanobis")	
+#------------------#	
+
+
+xz.vars <- c(X.mtc, "ltearnings")	
+xz.varsl <- as.list(c(X.mtc, "Lifetime earnings" = "ltearnings"))	
+
+kstest1 <- sapply(xz.varsl, function(t) ks.test(select(	
+  distancematch.passive1, one_of(xz.vars))[,t], select(	
+    vskt.mp, one_of(xz.vars))[,t], 	
+  alternative = "two.sided")$statistic)	
+
+kstest2 <- sapply(xz.varsl, function(t) ks.test(select(	
+  distancematch.passive2, one_of(xz.vars))[,t], select(	
+    vskt.mp, one_of(xz.vars))[,t], 	
+  alternative = "two.sided")$statistic)	
+
+#kstest3 <- sapply(xz.varsl, function(t) ks.test(select(	
+#  randommatch3, one_of(xz.vars))[,t], select(	
+#    vskt.mp, one_of(xz.vars))[,t], 	
+#  alternative = "two.sided")$statistic)	
+
+kstestfinal <- round(rbind(kstest1, kstest2),digits = 4)	
+rownames(kstestfinal) <- c("Minimax", "Mahalanobis")	
+ks.cutofflevel <- 1.224 * sqrt((nrow(soep.mp) + nrow(vskt.mp))/(nrow(soep.mp)*nrow(vskt.mp)))	
+
+#multivariate level 4 results:	
+
+mvartest1 <- cramer.test(as.matrix(select(distancematch.passive1, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))	
+mvartest2 <- cramer.test(as.matrix(select(distancematch.passive2, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))	
+#mvartest3 <- cramer.test(as.matrix(select(randommatch3, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))	
+
+#save(mvartest1, file="applicramer1")	
+#save(mvartest2, file="applicramer2")	
+#save(mvartest3, file="applicramer3")	
+
+mvarfinal <- as.data.frame(c(mvartest1$statistic, mvartest2$statistic))	
+rownames(mvarfinal) <- c("Minimax", "Mahalanobis")	
+colnames(mvarfinal) <- "Cramer"	
+
+kstestfinal <- bind_cols(kstestfinal, mvarfinal)	
+rownames(kstestfinal) <- c("Mahalanobis", "Minimax", "Gower")	
+
+# last table	
+
+stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distance after weighted random distance hot deck matching of SOEP and VSKT",	
+          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population. Displayed are KS distances. The correspoding critical value for equivalence of marginal distributions is $0.021$",	
+          label = "lv4application", notes.align = "l", summary = F) 
 #### Deploy final use file ####
 
 save(distancematch.passive2, file="passive_first_stage.RDA")
