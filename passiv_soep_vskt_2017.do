@@ -5,8 +5,8 @@ set more off
 cap log close 
 *log using "${log}passive.log", replace
 
-global maxyear 2017
-global maxyear2 2018
+global maxyear = 2017
+global maxyear2 = $maxyear + 1
 
 ********************************************************************************
 ********************************************************************************
