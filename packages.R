@@ -19,6 +19,7 @@ pacman::p_load(
   data.table,
   doParallel,
   parallel,
+  Ball,
   plyr,
   plm,
   pglm,

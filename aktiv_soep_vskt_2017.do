@@ -76,8 +76,7 @@ foreach gender in m f{
 set more off
 clear
 
-do "C:\Users\kgoebler\Documents\Survey_Data_Fusion\2_divorce_info.do"
-
+do "${divorcepath}2_divorce_info.do"
 /*
 *** Info fuer jemals geschieden sammeln ***;
 use ${original_wide}biomarsy
@@ -92,14 +91,14 @@ clear
 */
 ************************************************************************************************************
 ***Reference 2013
-use pid gebjahr sex loc1989 immiyear bdsampreg bcnetto bdnetto using  "${original_wide_raw}ppfad.dta", clear
+use pid gebjahr sex loc1989 immiyear bdsampreg bcnetto bdnetto using  "${original_wide}ppfad.dta", clear
 keep if (bdnetto >= 10 & bdnetto <19)
 sort pid
 
-merge 1:1 pid using ${original_wide_raw}bdp, keepus(pid bdp10101 bdp10103 bdp10105 bdp10107 bdp102 bdp6501 bdp10301 bdp7701 bdp10302 bdp10303 bdp107 bdp10801 bdp10802 bdp10901 bdp10902 bdp10903) keep(3) nogenerate
-merge 1:1 pid using ${original_wide_raw}phrf, keepus(pid bcphrfaj bdphrfak) keep(3) nogenerate
+merge 1:1 pid using ${original_wide}bdp, keepus(pid bdp10101 bdp10103 bdp10105 bdp10107 bdp102 bdp6501 bdp10301 bdp7701 bdp10302 bdp10303 bdp107 bdp10801 bdp10802 bdp10901 bdp10902 bdp10903) keep(3) nogenerate
+merge 1:1 pid using ${original_wide}phrf, keepus(pid bcphrfaj bdphrfak) keep(3) nogenerate
 ren pid persnr
-merge 1:1 persnr using ${original_wide_raw}biobirth, keepus(persnr sumkids) keep(1 3) nogenerate
+merge 1:1 persnr using ${original_wide}biobirth, keepus(persnr sumkids) keep(1 3) nogenerate
 ren persnr pid
 merge 1:1 pid using "${data}divorce.dta", keep(1 3) nogenerate
 replace divorce5 = 0 if missing(divorce5)
@@ -128,8 +127,8 @@ gen obs = 0
 *00 01 02 03 04 05 06 07 08 09 10
 
 foreach wave in  11 12 13 {
-	merge 1:1 pid using ${original_wide_raw}\${w_`wave'}pequiv, keepus(pid i11110`wave' iself`wave' ioldy`wave' igrv1`wave' iciv1`wave' ivbl1`wave' icom1`wave' iwar1`wave' iguv1`wave' ison1`wave' iprv1`wave' igrv2`wave' iciv2`wave' ivbl2`wave' icom2`wave' iwar2`wave' iguv2`wave' ison2`wave' iprv2`wave' iwidy`wave' iunby`wave' d11107`wave') keep(1 3) nogenerate
-	merge 1:1 pid using ${original_wide_raw}\${w_`wave'}pgen, keepus(pid isced11_`wave' labgro`wave' emplst`wave' ${w_`wave'}vebzeit expft`wave' exppt`wave' expue`wave' stib`wave' betr`wave' oeffd`wave' nace`wave' ${w_`wave'}erwzeit ${w_`wave'}famstd  jobch`wave') keep(1 3) nogenerat 
+	merge 1:1 pid using ${original_wide}/${w_`wave'}pequiv, keepus(pid i11110`wave' iself`wave' ioldy`wave' igrv1`wave' iciv1`wave' ivbl1`wave' icom1`wave' iwar1`wave' iguv1`wave' ison1`wave' iprv1`wave' igrv2`wave' iciv2`wave' ivbl2`wave' icom2`wave' iwar2`wave' iguv2`wave' ison2`wave' iprv2`wave' iwidy`wave' iunby`wave' d11107`wave') keep(1 3) nogenerate
+	merge 1:1 pid using ${original_wide}/${w_`wave'}pgen, keepus(pid isced11_`wave' labgro`wave' emplst`wave' ${w_`wave'}vebzeit expft`wave' exppt`wave' expue`wave' stib`wave' betr`wave' oeffd`wave' nace`wave' ${w_`wave'}erwzeit ${w_`wave'}famstd  jobch`wave') keep(1 3) nogenerat 
 	replace obs = obs + 1 if i11110`wave' !=.
 	gen self_`wave' = 0
 	gen civil_`wave' = 0
@@ -287,10 +286,10 @@ foreach x in bdp10302x expft13 exppt13 expue13 divorce5 divorce10 migrant isced1
  tab1 `x' 
 }
 
-save "${data}\soep_1_m_f.dta", replace
+save "${data}soep_1_m_f.dta", replace
 
 ***********************************************************************************************************************************************************************
-use "${data}\\soep_1_m_f.dta", clear
+use "${data}soep_1_m_f.dta", clear
 mi set wide
 mi register imp bdp10302x expft13 exppt13 expue13 isced11_13 bdp10902x betr13 bdp107x
 mi register regular gebjahr vz_13 tz_13 divorce5 earnings_13 iself13 iunby13 liberal_13 sumkids bcphrfaj sex west migrant z1 z2 everoeffd bdp102x nace1_13 nace2_13 nace3_13 nace4_13 arbeitgeber arbeitnehmer njob manager_13

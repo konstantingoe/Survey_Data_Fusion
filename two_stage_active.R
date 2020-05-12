@@ -8,11 +8,11 @@ source(".path.R")
 #### Active ####
 maxyear <- 2012
 # loading soep
-vskt.ma <- import(paste(path.new, "vskt_m_active.dta" , sep = "/"), setclass = "data.table")
-soep.ma <- import(paste(path.new, "soep_m_aktiv.dta" , sep = "/"), setclass = "data.table")
+vskt.ma <- import(paste(path, "vskt_m_active.dta" , sep = "/"), setclass = "data.table")
+soep.ma <- import(paste(path, "soep_m_aktiv.dta" , sep = "/"), setclass = "data.table")
 
-vskt.fa <- import(paste(path.new, "vskt_f_active.dta" , sep = "/"), setclass = "data.table")
-soep.fa <- import(paste(path.new, "soep_f_aktiv.dta" , sep = "/"), setclass = "data.table")
+vskt.fa <- import(paste(path, "vskt_f_active.dta" , sep = "/"), setclass = "data.table")
+soep.fa <- import(paste(path, "soep_f_aktiv.dta" , sep = "/"), setclass = "data.table")
 
 soep.ma$sex <- 0
 soep.fa$sex <- 1
@@ -166,6 +166,8 @@ stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distan
 
 save(distancematch1, file="active_first_stage.RDA")
 write.dta(distancematch1, file = "active_first_stage.dta")
+
+save(distancematch2, file="active_mahalanobis_notused.RDA")
 
 #### Finished #####
 

@@ -6,13 +6,13 @@ source("functions.R")
 source(".path.R")
 
 #### First Passive ####
-maxyear <- 2016
+maxyear <- 2017
 # loading soep
-vskt.mp <- import(paste(path.new, "vskt_passiv_panel_m.dta" , sep = "/"), setclass = "data.table")
-soep.mp <- import(paste(path.new, "soep_passive_m.dta" , sep = "/"), setclass = "data.table")
+vskt.mp <- import(paste(path, "vskt_passiv_panel_m.dta" , sep = "/"), setclass = "data.table")
+soep.mp <- import(paste(path, "soep_passive_m.dta" , sep = "/"), setclass = "data.table")
 
-vskt.fp <- import(paste(path.new, "vskt_passiv_panel_f.dta" , sep = "/"), setclass = "data.table")
-soep.fp <- import(paste(path.new, "soep_passive_f.dta" , sep = "/"), setclass = "data.table")
+vskt.fp <- import(paste(path, "vskt_passiv_panel_f.dta" , sep = "/"), setclass = "data.table")
+soep.fp <- import(paste(path, "soep_passive_f.dta" , sep = "/"), setclass = "data.table")
 
 soep.mp$sex <- 0
 soep.fp$sex <- 1
@@ -28,29 +28,29 @@ rm(vskt.fp,soep.fp)
 soep.mp <- soep.mp %>% 
   mutate(divorced = factor(divorce5,ordered = F)) %>% 
   mutate(age = maxyear -gbja,
-         sex = factor(sex, ordered = F)) 
+         sex = factor(sex, ordered = F),
+         education = factor(education, ordered = T)) 
 vskt.mp <- vskt.mp %>% 
   mutate(divorced = factor(spez_scheidung,ordered = F)) %>% 
-  mutate(expwork = exp_arbeit_20_bis2016) %>% 
-  mutate(expunempl = exp_al_20_bis2016) %>% 
   mutate(age = maxyear -gbja) %>% 
   mutate(ltearnings = npv_2060_r_net,
          sex = factor(sex, ordered = F)) 
 
+vskt.mp$expwork <- vskt.mp[,paste0("exp_arbeit_20_bis",maxyear)]
+vskt.mp$expunempl <- vskt.mp[,paste0("exp_al_20_bis",maxyear)]
 
 #select most interesting VSKT variables... can be remerged by case id 
-vskt.mp <- select(vskt.mp, one_of(c("case", "gbja", "weight", "rente_2016_gesamt", "unempben", "expunempl", "divorced", "expwork", "ltearnings", "age","ja", "sex")))
+vskt.mp <- select(vskt.mp, one_of(c("case", "gbja", "weight", paste0("rente_",maxyear,"_gesamt"), "unempben", "expunempl", "divorced", "expwork", "ltearnings", "age","ja", "sex")))
 
 #select jointly observed variables
 (X.vars <- intersect(names(soep.mp), names(vskt.mp)))
 
 
 #choose subsection of variables on which to display descriptive statistics
-vskt.tex <- select(vskt.mp, one_of(c("rente_2016_gesamt", "expunempl", "unempben", "expwork", "age", "divorced", "ltearnings")))
+vskt.tex <- select(vskt.mp, one_of(c(paste0("rente_",maxyear,"_gesamt"), "expunempl", "unempben", "expwork", "age", "divorced", "ltearnings")))
 vskt.tex <- vskt.tex %>% 
   mutate(everdivorced = as.numeric(as.numeric(divorced)==2,0,1)) %>% 
   mutate(ltearnings = round(ltearnings)) %>% 
-  mutate(rente_2016_gesamt = round(rente_2016_gesamt)) %>% 
   mutate(unempben = round(unempben))
 
 #Latex tables
@@ -61,8 +61,17 @@ stargazer(vskt.tex, out = "descriptives_VSKT.tex", title = "Chosen descriptive s
 
 #### Random Forests #####
 
+# formula object:
+
+measurevars <- c("education","ltearnings")
+groupvars  <- c("gbja", paste0("rente_",maxyear,"_gesamt"), "expunempl", "expwork", "unempben", "divorced", "sex")
+
+formula1 <- as.formula(paste(measurevars[1], paste(groupvars, collapse=" + "), sep=" ~ "))
+formula2 <- as.formula(paste(measurevars[2], paste(groupvars, collapse=" + "), sep=" ~ "))
+
 #SOEP classification tree for variable importance
-forestSOEP <- randomForest(factor(education, ordered = T) ~ gbja + rente_2016_gesamt + expunempl + expwork + unempben + divorced + sex, data = soep.mp, importance = T, corr.bias = T)
+
+forestSOEP <- randomForest(formula1, data = soep.mp, importance = T, corr.bias = T)
 pdf('forestSOEPpassiv.pdf',height=4, width=6)
 varImpPlot(forestSOEP,type=2, main = "", labels=c("Sex", "Ever divorced", "Unempl. benefit", "Exp. unempl.", "YoB", "Work exp.", "Pension entitl." ))
 dev.off()
@@ -70,7 +79,7 @@ dev.off()
 barplot(t(VI_FA/sum(VI_FA)))
 
 #VSKT regression tree for variable importance 
-forestVSKT <- randomForest(ltearnings ~ gbja + rente_2016_gesamt + expunempl + expwork + unempben + divorced + sex, data = vskt.mp , importance = T, corr.bias = T)
+forestVSKT <- randomForest(formula2, data = vskt.mp , importance = T, corr.bias = T)
 pdf('forestVSKTpassiv.pdf',height=4, width=6)
 varImpPlot(forestVSKT,type=2, main = "", labels = c("Ever divorce", "Exp. unempl.", "YoB", "Unempl. benefit", "Sex", "Pension entitl.", "Work exp."))
 dev.off()
@@ -81,7 +90,7 @@ barplot(t(VI_FB/sum(VI_FB)))
 
 #choose set of matchingvariables:	
 #one could discuss whether uneployment benefits should be left out... keep it for now and check X_M quality	
-X.mtc <- c("rente_2016_gesamt","gbja" , "unempben", "expwork", "expunempl")	
+X.mtc <- c(paste0("rente_",maxyear,"_gesamt"),"gbja" , "unempben", "expwork", "expunempl")	
 names(X.mtc) <- c("Pension entitl.", "YoB", "Unempl. benef.", "Work exp." , "Exp. unempl.")	
 
 # Hellinger Distance for matching variable quality	
@@ -109,7 +118,7 @@ temp3 <- hellinger(temp1$expunempl, temp2$expunempl, method = 1)
 
 ##### Prepare for matching #####	
 
-(X.mtc <- c("rente_2016_gesamt", "gbja", "expwork", "expunempl", "unempben")) #final X_M	
+(X.mtc <- c(paste0("rente_",maxyear,"_gesamt"), "gbja", "expwork", "expunempl", "unempben")) #final X_M	
 names(X.mtc) <- c("Pension entitl.", "YoB", "Work exp." , "Exp. unempl.", "Unempl.ben.")	
 
 (Z.vars <- setdiff(names(vskt.mp), names(soep.mp))) #available just in VSKT	
@@ -120,9 +129,9 @@ names(X.mtc) <- c("Pension entitl.", "YoB", "Work exp." , "Exp. unempl.", "Unemp
 # one request attempt distance, not random matching with Hungaran algorithm in order to	
 # make sure that not too many of the same donors are assigned to the SOEP receivers 	
 
-#randommatch1 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 	
-#randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 	
-#randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 	
+randommatch1 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 	
+randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 	
+randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 	
 distancematch.passive1 <- distancehd(A=soep.mp,B=vskt.mp, distfun = "minimax")	
 
 distancematch.passive2 <- distancehd(A=soep.mp,B=vskt.mp,distfun = "Mahalanobis")	
@@ -131,6 +140,22 @@ distancematch.passive2 <- distancehd(A=soep.mp,B=vskt.mp,distfun = "Mahalanobis"
 
 xz.vars <- c(X.mtc, "ltearnings")	
 xz.varsl <- as.list(c(X.mtc, "Lifetime earnings" = "ltearnings"))	
+
+
+kstestrand1 <- sapply(xz.varsl, function(t) ks.test(select(	
+  randommatch1, one_of(xz.vars))[,t], select(	
+    vskt.mp, one_of(xz.vars))[,t], 	
+  alternative = "two.sided")$statistic)	
+
+kstestrand2 <- sapply(xz.varsl, function(t) ks.test(select(	
+  randommatch2, one_of(xz.vars))[,t], select(	
+    vskt.mp, one_of(xz.vars))[,t], 	
+  alternative = "two.sided")$statistic)	
+
+kstestrand3 <- sapply(xz.varsl, function(t) ks.test(select(	
+  randommatch3, one_of(xz.vars))[,t], select(	
+    vskt.mp, one_of(xz.vars))[,t], 	
+  alternative = "two.sided")$statistic)	
 
 kstest1 <- sapply(xz.varsl, function(t) ks.test(select(	
   distancematch.passive1, one_of(xz.vars))[,t], select(	
@@ -147,45 +172,34 @@ kstest2 <- sapply(xz.varsl, function(t) ks.test(select(
 #    vskt.mp, one_of(xz.vars))[,t], 	
 #  alternative = "two.sided")$statistic)	
 
-kstestfinal <- round(rbind(kstest1, kstest2),digits = 4)	
-rownames(kstestfinal) <- c("Minimax", "Mahalanobis")	
+kstestfinal <- round(rbind(kstestrand1, kstestrand2, kstestrand3, kstest1, kstest2),digits = 4)	
+rownames(kstestfinal) <- c("Rand: Mahal.", "Rand: Minimax", "Rand: Gower" ,"Dist: Minimax", "Dist: Mahalanobis")	
 ks.cutofflevel <- 1.224 * sqrt((nrow(soep.mp) + nrow(vskt.mp))/(nrow(soep.mp)*nrow(vskt.mp)))	
-
+kstestfinal
 #multivariate level 4 results:	
 
-mvartest1 <- cramer.test(as.matrix(select(distancematch.passive1, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))	
-mvartest2 <- cramer.test(as.matrix(select(distancematch.passive2, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))	
-#mvartest3 <- cramer.test(as.matrix(select(randommatch3, one_of(xz.vars))), as.matrix(select(vskt.mp, one_of(xz.vars))))	
+mvartest1 <- bd.test(select(randommatch1, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
+mvartest2 <- bd.test(select(randommatch2, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
+mvartest3 <- bd.test(select(randommatch3, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
 
-#save(mvartest1, file="applicramer1")	
-#save(mvartest2, file="applicramer2")	
-#save(mvartest3, file="applicramer3")	
+mvartest4 <- bd.test(select(distancematch.passive1, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
+mvartest5 <- bd.test(select(distancematch.passive2, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
+bdtestfinal <- round(rbind(mvartest1, mvartest2, mvartest3, mvartest4, mvartest5),digits = 4)	
+rownames(bdtestfinal) <- c("Rand: Mahal.", "Rand: Minimax", "Rand: Gower" ,"Dist: Minimax", "Dist: Mahalanobis")	
+bdtestfinal
 
-mvarfinal <- as.data.frame(c(mvartest1$statistic, mvartest2$statistic))	
-rownames(mvarfinal) <- c("Minimax", "Mahalanobis")	
-colnames(mvarfinal) <- "Cramer"	
 
-kstestfinal <- bind_cols(kstestfinal, mvarfinal)	
-rownames(kstestfinal) <- c("Mahalanobis", "Minimax", "Gower")	
-
+### choose the one that has the smallest test statistic!!!!!
 # last table	
 
-stargazer(kstestfinal, out = "applevel4.tex", title = "Kolmogorov-Smirnov distance after weighted random distance hot deck matching of SOEP and VSKT",	
-          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2015 passive West German population. Displayed are KS distances. The correspoding critical value for equivalence of marginal distributions is $0.021$",	
+stargazer(bdtestfinal, out = "applevel1.tex", title = "Ball divergence test after several hot deck matching routines of SOEP and VSKT",	
+          digits = 4, notes = "Author's calculations based on SOEP and VSKT 2002, 2004-2017 passive West German population. Displayed are Ball Divergence Statistics",	
           label = "lv4application", notes.align = "l", summary = F) 
 #### Deploy final use file ####
 
-save(distancematch.passive2, file="passive_first_stage.RDA")
-write.dta(distancematch.passive2, file = "passive_first_stage.dta")
+save(randommatch1, file="passive_first_stage.RDA")
+write.dta(randommatch1, file = "passive_first_stage.dta")
 
 #### Finished #####
-
-
-
-
-
-
-
-
 
 

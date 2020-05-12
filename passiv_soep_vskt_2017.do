@@ -5,8 +5,8 @@ set more off
 cap log close 
 *log using "${log}passive.log", replace
 
-global maxyear 2016
-global maxyear2 2017
+global maxyear 2017
+global maxyear2 2018
 
 ********************************************************************************
 ********************************************************************************
@@ -77,7 +77,7 @@ foreach gender in m f{
 
 	global w_1996 "renteneintritt_1995==1"
 
-	forval i=1997 (1) $maxyear2 {
+	forval i=1997 / $maxyear2 {
 
 	local j= `i' -1
 
@@ -362,7 +362,7 @@ use "${data}soep_passive_full_div", clear
 ren persnr pid
 
 preserve 
-do "C:\Users\kgoebler\Documents\Survey_Data_Fusion\2_divorce_info.do"
+do "${divorcepath}2_divorce_info.do"
 restore 
 
 merge 1:1 pid using "${data}divorce.dta", keep(1 3) nogen
@@ -375,7 +375,7 @@ foreach x in experienceft experiencept education expunempl {
 
 	 replace `x'=. if inlist(`x',-1,-3)
 	 replace `x'=0 if `x'==-2
-	 tab1 `x'
+	 *tab1 `x'
 	
 }
 
