@@ -129,33 +129,20 @@ names(X.mtc) <- c("Pension entitl.", "YoB", "Work exp." , "Exp. unempl.", "Unemp
 # one request attempt distance, not random matching with Hungaran algorithm in order to	
 # make sure that not too many of the same donors are assigned to the SOEP receivers 	
 
-randommatch1 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 	
-randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 	
-randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 	
-distancematch.passive1 <- distancehd(A=soep.mp,B=vskt.mp, distfun = "minimax")	
+# randommatch undesired because it can't restrict donor being donated only once.
 
-distancematch.passive2 <- distancehd(A=soep.mp,B=vskt.mp,distfun = "Mahalanobis")	
+#randommatch1 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Mahalanobis", cutdon="min", weight = "weight") 	
+#randommatch2 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "minimax", cutdon="min", weight = "weight") 	
+#randommatch3 <- randomhd(A=soep.mp, B=vskt.mp, distfun = "Gower", cutdon="min", weight = "weight") 	
+
+distancematch.passive1 <- distancehd(A=soep.mp,B=vskt.mp, distfun = "minimax")	
+distancematch.passive2 <- distancehd(A=soep.mp,B=vskt.mp, distfun = "Gower")	
+distancematch.passive3 <- distancehd(A=soep.mp,B=vskt.mp,distfun = "Mahalanobis")	
 #------------------#	
 
 
 xz.vars <- c(X.mtc, "ltearnings")	
 xz.varsl <- as.list(c(X.mtc, "Lifetime earnings" = "ltearnings"))	
-
-
-kstestrand1 <- sapply(xz.varsl, function(t) ks.test(select(	
-  randommatch1, one_of(xz.vars))[,t], select(	
-    vskt.mp, one_of(xz.vars))[,t], 	
-  alternative = "two.sided")$statistic)	
-
-kstestrand2 <- sapply(xz.varsl, function(t) ks.test(select(	
-  randommatch2, one_of(xz.vars))[,t], select(	
-    vskt.mp, one_of(xz.vars))[,t], 	
-  alternative = "two.sided")$statistic)	
-
-kstestrand3 <- sapply(xz.varsl, function(t) ks.test(select(	
-  randommatch3, one_of(xz.vars))[,t], select(	
-    vskt.mp, one_of(xz.vars))[,t], 	
-  alternative = "two.sided")$statistic)	
 
 kstest1 <- sapply(xz.varsl, function(t) ks.test(select(	
   distancematch.passive1, one_of(xz.vars))[,t], select(	
@@ -167,25 +154,29 @@ kstest2 <- sapply(xz.varsl, function(t) ks.test(select(
     vskt.mp, one_of(xz.vars))[,t], 	
   alternative = "two.sided")$statistic)	
 
+kstest3 <- sapply(xz.varsl, function(t) ks.test(select(	
+  distancematch.passive3, one_of(xz.vars))[,t], select(	
+    vskt.mp, one_of(xz.vars))[,t], 	
+  alternative = "two.sided")$statistic)	
+
 #kstest3 <- sapply(xz.varsl, function(t) ks.test(select(	
 #  randommatch3, one_of(xz.vars))[,t], select(	
 #    vskt.mp, one_of(xz.vars))[,t], 	
 #  alternative = "two.sided")$statistic)	
 
-kstestfinal <- round(rbind(kstestrand1, kstestrand2, kstestrand3, kstest1, kstest2),digits = 4)	
-rownames(kstestfinal) <- c("Rand: Mahal.", "Rand: Minimax", "Rand: Gower" ,"Dist: Minimax", "Dist: Mahalanobis")	
+kstestfinal <- round(rbind(kstest1, kstest2, kstest3),digits = 4)	
+rownames(kstestfinal) <- c("Dist: Minimax", "Dist: Gower",  "Dist: Mahalanobis")	
 ks.cutofflevel <- 1.224 * sqrt((nrow(soep.mp) + nrow(vskt.mp))/(nrow(soep.mp)*nrow(vskt.mp)))	
 kstestfinal
 #multivariate level 4 results:	
 
-mvartest1 <- bd.test(select(randommatch1, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
-mvartest2 <- bd.test(select(randommatch2, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
-mvartest3 <- bd.test(select(randommatch3, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
+mvartest1 <- bd.test(select(distancematch.passive1, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
+mvartest2 <- bd.test(select(distancematch.passive2, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
+mvartest3 <- bd.test(select(distancematch.passive3, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
 
-mvartest4 <- bd.test(select(distancematch.passive1, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
-mvartest5 <- bd.test(select(distancematch.passive2, one_of(xz.vars)), select(vskt.mp, one_of(xz.vars)))$statistic	
-bdtestfinal <- round(rbind(mvartest1, mvartest2, mvartest3, mvartest4, mvartest5),digits = 4)	
-rownames(bdtestfinal) <- c("Rand: Mahal.", "Rand: Minimax", "Rand: Gower" ,"Dist: Minimax", "Dist: Mahalanobis")	
+
+bdtestfinal <- rbind(mvartest1, mvartest2, mvartest3)
+rownames(bdtestfinal) <- c("Dist: Minimax", "Dist: Gower",  "Dist: Mahalanobis")	
 bdtestfinal
 
 
@@ -197,8 +188,8 @@ stargazer(bdtestfinal, out = "applevel1.tex", title = "Ball divergence test afte
           label = "lv4application", notes.align = "l", summary = F) 
 #### Deploy final use file ####
 
-save(randommatch1, file="passive_first_stage.RDA")
-write.dta(randommatch1, file = "passive_first_stage.dta")
+save(distancematch.passive2, file="passive_first_stage.RDA")
+write.dta(distancematch.passive2, file = "passive_first_stage.dta")
 
 #### Finished #####
 
